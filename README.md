@@ -47,7 +47,7 @@ cd web
 npm run dev
 ```
 
-Buka peramban di: **`http://localhost:5173`**
+Buka peramban di: **`http://localhost:5175`**
 
 ---
 

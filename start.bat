@@ -13,13 +13,13 @@ echo [2/3] Starting Backend API Server (port 4000)...
 start "Apoteku Backend" cmd /k "cd /d %~dp0server && npm run dev"
 
 echo.
-echo [3/3] Starting Web Application (port 5173)...
+echo [3/3] Starting Web Application (port 5175)...
 start "Apoteku Web" cmd /k "cd /d %~dp0web && npm run dev"
 
 echo.
 echo ========================================================
 echo   All services launched!
-echo   Open in browser: http://localhost:5173
+echo   Open in browser: http://localhost:5175
 echo.
 echo   Demo Accounts:
 echo     - Pasien:     pasien@rara.local   / pasien123
