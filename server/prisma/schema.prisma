@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PATIENT
+  PHARMACIST
+  ADMIN
+}
+
+enum DoseStatus {
+  PENDING
+  TAKEN
+  SKIPPED
+  MISSED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  role         Role     @default(PATIENT)
+  name         String
+  email        String?  @unique
+  phone        String?  @unique
+  passwordHash String
+  locale       String   @default("id")
+  timezone     String   @default("Asia/Jakarta")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  patient           Patient?           @relation("PatientUser")
+  assignedPatients  Patient[]          @relation("AssignedPharmacist")
+  messages          Message[]
+  pushSubscriptions PushSubscription[]
+}
+
+model Patient {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  user         User      @relation("PatientUser", fields: [userId], references: [id], onDelete: Cascade)
+  pharmacistId String?
+  pharmacist   User?     @relation("AssignedPharmacist", fields: [pharmacistId], references: [id], onDelete: SetNull)
+  /// Pseudonymous participant code for research exports (e.g. P-001)
+  studyCode    String?   @unique
+  dateOfBirth  DateTime?
+  gender       String?
+  address      String?
+  diagnosis    String?
+  allergies    String?
+  /// Internal pharmacist notes (never shown to the patient)
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  medications Medication[]
+  doseLogs    DoseLog[]
+  messages    Message[]
+  responses   QuestionnaireResponse[]
+}
+
+model Medication {
+  id           String    @id @default(cuid())
+  patientId    String
+  patient      Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  name         String
+  dosage       String?
+  form         String?
+  instructions String?
+  /// Local times of day in the patient's timezone, "HH:mm"
+  times        String[]
+  startDate    DateTime  @default(now())
+  endDate      DateTime?
+  active       Boolean   @default(true)
+  articleId    String?
+  article      Article?  @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  createdById  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  doseLogs DoseLog[]
+
+  @@index([patientId])
+}
+
+model DoseLog {
+  id           String     @id @default(cuid())
+  medicationId String
+  medication   Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  patientId    String
+  patient      Patient    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  scheduledAt  DateTime
+  status       DoseStatus @default(PENDING)
+  takenAt      DateTime?
+  remindedAt   DateTime?
+  note         String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([medicationId, scheduledAt])
+  @@index([patientId, scheduledAt])
+  @@index([status, scheduledAt])
+}
+
+model Message {
+  id        String    @id @default(cuid())
+  /// Conversation key: every patient has exactly one thread with the pharmacy team
+  patientId String
+  patient   Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body      String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([patientId, createdAt])
+}
+
+model Article {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  category  String
+  drugName  String?
+  titleId   String
+  titleEn   String
+  summaryId String?
+  summaryEn String?
+  bodyId    String
+  bodyEn    String
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  medications Medication[]
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}
+
+model Questionnaire {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  titleId       String
+  titleEn       String
+  descriptionId String?
+  descriptionEn String?
+  /// [{ id, textId, textEn, options: [{ value, textId, textEn, score }] }]
+  questions     Json
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  responses QuestionnaireResponse[]
+}
+
+model QuestionnaireResponse {
+  id              String        @id @default(cuid())
+  questionnaireId String
+  questionnaire   Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  answers         Json
+  score           Int?
+  createdAt       DateTime      @default(now())
+
+  @@index([patientId, createdAt])
+}
