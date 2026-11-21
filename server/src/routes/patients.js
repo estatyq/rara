@@ -8,6 +8,8 @@ import { adherenceFor, adherenceRates, rematerializePatient } from '../doses.js'
 import { isValidDate, isValidTimezone, startOfLocalDay } from '../time.js';
 import { normalizePhone } from './auth.js';
 import { classifyBloodPressure, isControlled } from '../bloodPressure.js';
+import { logAudit } from '../audit.js';
+import { DateTime } from 'luxon';
 
 const router = Router();
 
@@ -180,6 +182,248 @@ router.post('/', requireStaff, async (req, res) => {
   res.status(201).json({ patient: user.patient, user: publicUser(user) });
 });
 
+// ---- Pharmacist Dashboard Analytics Summary (KPIs, At-Risk, Trend, Activity) ----
+
+router.get('/dashboard-summary', requireStaff, async (req, res) => {
+  const days = req.query.days === '30' ? 30 : 7;
+  const mine = req.query.mine === '1';
+  const tz = req.user.timezone || 'Asia/Jakarta';
+  const startDt = DateTime.now().setZone(tz).startOf('day').minus({ days: days - 1 });
+  const since = startDt.toJSDate();
+  const now = new Date();
+
+  const patientWhere = mine ? { pharmacistId: req.user.id } : {};
+  const patients = await prisma.patient.findMany({
+    where: patientWhere,
+    include: {
+      user: { select: { id: true, name: true, phone: true, active: true, timezone: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const ids = patients.map((p) => p.id);
+  const patientMap = new Map(patients.map((p) => [p.id, p]));
+
+  const [
+    rate30Map,
+    doseLogsRange,
+    bpLogsRange,
+    recentDoses,
+    recentBps,
+    recentParams,
+    recentMessages,
+    pendingServices,
+    upcomingCheckups,
+  ] = await Promise.all([
+    adherenceRates(ids, 30),
+    ids.length
+      ? prisma.doseLog.findMany({
+          where: { patientId: { in: ids }, scheduledAt: { gte: since, lte: now } },
+          select: { patientId: true, status: true, scheduledAt: true },
+        })
+      : [],
+    ids.length
+      ? prisma.bloodPressureLog.findMany({
+          where: { patientId: { in: ids }, measuredAt: { gte: new Date(+now - 30 * 86400000) } },
+          select: { patientId: true, systolic: true, diastolic: true, measuredAt: true },
+          orderBy: { measuredAt: 'desc' },
+        })
+      : [],
+    ids.length
+      ? prisma.doseLog.findMany({
+          where: { patientId: { in: ids }, status: { in: ['TAKEN', 'SKIPPED'] }, takenAt: { not: null } },
+          include: { medication: { select: { name: true, dosage: true } } },
+          orderBy: { takenAt: 'desc' },
+          take: 10,
+        })
+      : [],
+    ids.length
+      ? prisma.bloodPressureLog.findMany({
+          where: { patientId: { in: ids } },
+          orderBy: { measuredAt: 'desc' },
+          take: 10,
+        })
+      : [],
+    ids.length
+      ? prisma.healthParameterLog.findMany({
+          where: { patientId: { in: ids } },
+          orderBy: { measuredAt: 'desc' },
+          take: 8,
+        })
+      : [],
+    ids.length
+      ? prisma.message.findMany({
+          where: { patientId: { in: ids } },
+          include: { sender: { select: { id: true, name: true, role: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        })
+      : [],
+    prisma.serviceRequest.count({
+      where: {
+        status: 'PENDING',
+        ...(mine ? { pharmacistId: req.user.id } : {}),
+      },
+    }),
+    ids.length
+      ? prisma.checkupReminder.count({
+          where: {
+            patientId: { in: ids },
+            status: 'UPCOMING',
+            scheduledAt: { lte: new Date(+now + 7 * 86400000) },
+          },
+        })
+      : 0,
+  ]);
+
+  const latestBpByPatient = new Map();
+  for (const bp of bpLogsRange) {
+    if (!latestBpByPatient.has(bp.patientId)) latestBpByPatient.set(bp.patientId, bp);
+  }
+
+  // Patients at risk: adherence < 80% OR latest BP HIGH/CRITICAL
+  const atRiskPatients = [];
+  let activePatients = 0;
+  let adherenceSum = 0;
+  let adherenceN = 0;
+
+  for (const p of patients) {
+    if (p.user.active) activePatients++;
+    const adh = rate30Map[p.id];
+    if (adh !== null && adh !== undefined) {
+      adherenceSum += adh;
+      adherenceN++;
+    }
+    const latestBp = latestBpByPatient.get(p.id) || null;
+    const bpCategory = latestBp ? classifyBloodPressure(latestBp.systolic, latestBp.diastolic) : null;
+    const isHighBp = bpCategory === 'HIGH' || bpCategory === 'CRITICAL';
+    const isLowAdh = adh !== null && adh !== undefined && adh < 80;
+    if (isHighBp || isLowAdh) {
+      const severity = (bpCategory === 'CRITICAL' ? 100 : isHighBp ? 60 : 0) + (isLowAdh ? 80 - adh : 0);
+      atRiskPatients.push({
+        id: p.id,
+        name: p.user.name,
+        studyCode: p.studyCode,
+        adherence30: adh,
+        latestBp: latestBp
+          ? { systolic: latestBp.systolic, diastolic: latestBp.diastolic, category: bpCategory }
+          : null,
+        riskReason: isHighBp && isLowAdh ? 'BOTH' : isHighBp ? 'BP' : 'ADHERENCE',
+        severity,
+      });
+    }
+  }
+  atRiskPatients.sort((a, b) => b.severity - a.severity);
+
+  // Daily trend (Adherence % & BP Control %)
+  const dayBuckets = new Map();
+  for (let i = 0; i < days; i++) {
+    const dStr = startDt.plus({ days: i }).toISODate();
+    dayBuckets.set(dStr, { date: dStr, taken: 0, resolved: 0, bpControlled: 0, bpTotal: 0, sysSum: 0 });
+  }
+  for (const d of doseLogsRange) {
+    const key = DateTime.fromJSDate(d.scheduledAt).setZone(tz).toISODate();
+    const b = dayBuckets.get(key);
+    if (!b) continue;
+    if (d.status === 'TAKEN') {
+      b.taken++;
+      b.resolved++;
+    } else if (d.status === 'SKIPPED' || d.status === 'MISSED') {
+      b.resolved++;
+    }
+  }
+  for (const bp of bpLogsRange) {
+    if (bp.measuredAt < since) continue;
+    const key = DateTime.fromJSDate(bp.measuredAt).setZone(tz).toISODate();
+    const b = dayBuckets.get(key);
+    if (!b) continue;
+    b.bpTotal++;
+    b.sysSum += bp.systolic;
+    if (isControlled(bp)) b.bpControlled++;
+  }
+
+  const trend = [...dayBuckets.values()].map((b) => ({
+    date: b.date,
+    adherenceRate: b.resolved ? Math.round((b.taken / b.resolved) * 100) : null,
+    bpControlRate: b.bpTotal ? Math.round((b.bpControlled / b.bpTotal) * 100) : null,
+    avgSystolic: b.bpTotal ? Math.round(b.sysSum / b.bpTotal) : null,
+  }));
+
+  // Unified Recent Activity Feed
+  const activities = [];
+  for (const d of recentDoses) {
+    const p = patientMap.get(d.patientId);
+    if (!p) continue;
+    activities.push({
+      id: `dose-${d.id}`,
+      kind: 'DOSE',
+      patientId: p.id,
+      patientName: p.user.name,
+      detail: `${d.medication.name}${d.medication.dosage ? ` ${d.medication.dosage}` : ''}`,
+      status: d.status,
+      timestamp: d.takenAt || d.scheduledAt,
+    });
+  }
+  for (const bp of recentBps) {
+    const p = patientMap.get(bp.patientId);
+    if (!p) continue;
+    activities.push({
+      id: `bp-${bp.id}`,
+      kind: 'BP',
+      patientId: p.id,
+      patientName: p.user.name,
+      detail: `${bp.systolic}/${bp.diastolic} mmHg`,
+      status: classifyBloodPressure(bp.systolic, bp.diastolic),
+      timestamp: bp.measuredAt,
+    });
+  }
+  for (const hp of recentParams) {
+    const p = patientMap.get(hp.patientId);
+    if (!p) continue;
+    activities.push({
+      id: `hp-${hp.id}`,
+      kind: 'HEALTH_PARAM',
+      patientId: p.id,
+      patientName: p.user.name,
+      detail: `${hp.type}: ${hp.value} ${hp.unit}`,
+      status: 'RECORDED',
+      timestamp: hp.measuredAt,
+    });
+  }
+  for (const m of recentMessages) {
+    const p = patientMap.get(m.patientId);
+    if (!p) continue;
+    activities.push({
+      id: `msg-${m.id}`,
+      kind: 'MESSAGE',
+      patientId: p.id,
+      patientName: p.user.name,
+      detail: m.body.slice(0, 80),
+      status: m.sender?.role || 'PATIENT',
+      timestamp: m.createdAt,
+    });
+  }
+  activities.sort((a, b) => +new Date(b.timestamp) - +new Date(a.timestamp));
+
+  const bpControlled30 = bpLogsRange.filter(isControlled).length;
+
+  res.json({
+    kpis: {
+      totalPatients: patients.length,
+      activePatients,
+      needsFollowUp: Math.max(atRiskPatients.length, pendingServices + upcomingCheckups),
+      atRiskCount: atRiskPatients.length,
+      pendingServices,
+      upcomingCheckups,
+      avgAdherence30d: adherenceN ? Math.round(adherenceSum / adherenceN) : null,
+      bpControlledRate: bpLogsRange.length ? Math.round((bpControlled30 / bpLogsRange.length) * 100) : null,
+    },
+    atRiskPatients: atRiskPatients.slice(0, 6),
+    trend,
+    recentActivity: activities.slice(0, 10),
+  });
+});
+
 // ---- Single patient ("me" or id) ------------------------------------------
 
 router.get('/:patientId', resolvePatient, async (req, res) => {
@@ -215,6 +459,7 @@ router.patch('/:patientId', resolvePatient, async (req, res) => {
 router.post('/:patientId/reset-password', requireStaff, resolvePatient, async (req, res) => {
   const { password } = z.object({ password: z.string().min(6).max(100) }).parse(req.body);
   await prisma.user.update({ where: { id: req.patient.userId }, data: { passwordHash: await bcrypt.hash(password, 10) } });
+  await logAudit(req.user, 'RESET_PATIENT_PASSWORD', 'Patient', req.patient.id);
   res.json({ ok: true });
 });
 

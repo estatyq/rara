@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const SocketContext = createContext(null);
 
@@ -9,7 +10,7 @@ export function playAlarmChime() {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
-    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+    const notes = [523.25, 659.25, 783.99, 1046.5];
     notes.forEach((freq, idx) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -24,25 +25,31 @@ export function playAlarmChime() {
       osc.stop(ctx.currentTime + idx * 0.16 + 0.3);
     });
   } catch {
-    // Ignore if browser autoplay policy blocks audio before interaction
+    // Ignore autoplay restrictions before user interaction
   }
 }
 
 export function SocketProvider({ children }) {
   const { token, user } = useAuth();
+  const { t, dateLocale } = useLanguage();
   const [socket, setSocket] = useState(null);
   const [activeAlert, setActiveAlert] = useState(null);
+  const tRef = useRef(t);
+  const dateLocaleRef = useRef(dateLocale);
+  tRef.current = t;
+  dateLocaleRef.current = dateLocale;
 
   const triggerAlarm = useCallback((payload) => {
     playAlarmChime();
     setActiveAlert({
-      type: 'dose',
+      type: payload.type || 'dose',
       doseId: payload.doseId || null,
-      title: payload.title || 'Waktunya Minum Obat! 💊',
-      message: payload.message || `Jadwal obat: ${payload.medication || 'Obat Harian'}`,
+      medication: payload.medication || 'Medication',
+      title: payload.title || tRef.current.alarm.pushHeader,
+      message: payload.message || `${payload.medication || ''}${payload.dosage ? ` • ${payload.dosage}` : ''}`,
       dosage: payload.dosage || null,
       instructions: payload.instructions || null,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: new Date().toLocaleTimeString(dateLocaleRef.current, { hour: '2-digit', minute: '2-digit', hour12: false }),
     });
   }, []);
 
@@ -61,12 +68,22 @@ export function SocketProvider({ children }) {
 
     s.on('dose:due', (data) => {
       triggerAlarm({
+        type: 'dose',
         doseId: data.doseId,
         medication: data.medication,
         dosage: data.dosage,
         instructions: data.instructions,
-        title: 'Alarm Pengingat Obat! 💊',
-        message: `${data.medication}${data.dosage ? ` (${data.dosage})` : ''}`,
+        title: tRef.current.alarm.pushHeader,
+        message: `${data.medication}${data.dosage ? ` • ${data.dosage}` : ''}`,
+      });
+    });
+
+    s.on('checkup:due', (data) => {
+      triggerAlarm({
+        type: 'checkup',
+        medication: data.title,
+        title: tRef.current.health.checkupsTitle,
+        message: `${data.title}${data.location ? ` — ${data.location}` : ''}`,
       });
     });
 
@@ -84,7 +101,7 @@ export function SocketProvider({ children }) {
     setTimeout(() => {
       triggerAlarm({
         ...saved,
-        title: 'Pengingat Tunda (Snooze) 💊',
+        title: tRef.current.alarm.snoozedTitle,
       });
     }, minutes * 60 * 1000);
   }, [activeAlert, triggerAlarm]);

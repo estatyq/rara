@@ -6,6 +6,7 @@ import { HttpError, forbidden, notFound } from '../errors.js';
 import { logAudit } from '../audit.js';
 import { sendWhatsAppMessage } from '../whatsapp.js';
 import { emitToPatient, emitToUser } from '../realtime.js';
+import { tr } from '../i18n.js';
 
 const router = Router();
 
@@ -143,10 +144,9 @@ router.post('/requests', async (req, res) => {
   });
 
   // Also post an automatic notification in the patient's consultation thread
-  const msgBody =
-    req.user.locale === 'en'
-      ? `[Service Request: ${service.nameEn}] ${data.complaint ? `Complaint/Notes: ${data.complaint}` : 'Requested pharmacy service consultation.'}`
-      : `[Permintaan Layanan: ${service.nameId}] ${data.complaint ? `Keluhan/Catatan: ${data.complaint}` : 'Mengajukan permintaan layanan kefarmasian.'}`;
+  const ut = tr(req.user.locale);
+  const serviceName = req.user.locale === 'en' ? service.nameEn : service.nameId;
+  const msgBody = ut.chatServiceRequest({ serviceName, complaint: data.complaint });
 
   await prisma.message.create({
     data: {
@@ -195,24 +195,33 @@ router.patch('/requests/:id', requireStaff, async (req, res) => {
     },
   });
 
+  const pt = tr(existing.patient.user.locale);
+  const localizedServiceName = existing.patient.user.locale === 'en' ? existing.service.nameEn : existing.service.nameId;
+
   if (data.pharmacistReply) {
     await prisma.message.create({
       data: {
         patientId: existing.patientId,
         senderId: req.user.id,
-        body: `[${existing.service.nameId} — ${updated.status}] ${data.pharmacistReply}`,
+        body: pt.chatServiceReply({
+          serviceName: localizedServiceName,
+          status: updated.status,
+          reply: data.pharmacistReply,
+        }),
       },
     });
   }
 
   if (data.notifyWhatsApp && existing.patient.user.phone) {
-    const waText =
-      existing.patient.user.locale === 'en'
-        ? `[Apoteku Pharmacy Service] Hello ${existing.patient.user.name}, your request for *${existing.service.nameEn}* is now *${updated.status}*.${data.pharmacistReply ? ` Pharmacist note: ${data.pharmacistReply}` : ''}`
-        : `[Layanan Farmasi Apoteku] Halo ${existing.patient.user.name}, permintaan layanan *${existing.service.nameId}* Anda berstatus *${updated.status}*.${data.pharmacistReply ? ` Catatan Apoteker (${req.user.name}): ${data.pharmacistReply}` : ''}`;
     await sendWhatsAppMessage({
       phone: existing.patient.user.phone,
-      message: waText,
+      message: pt.waServiceUpdate({
+        patientName: existing.patient.user.name,
+        serviceName: localizedServiceName,
+        status: updated.status,
+        pharmacistName: req.user.name,
+        reply: data.pharmacistReply,
+      }),
       category: 'CONSULTATION',
       userId: existing.patient.userId,
       patientId: existing.patientId,

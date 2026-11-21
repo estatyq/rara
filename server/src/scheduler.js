@@ -6,6 +6,7 @@ import { emitToUser } from './realtime.js';
 import { signDoseToken } from './auth.js';
 import { tr } from './i18n.js';
 import { sendWhatsAppMessage, getSystemConfigMap } from './whatsapp.js';
+import { formatLocal } from './time.js';
 
 const REMIND_WINDOW_MIN = 30;
 let ticking = false;
@@ -57,17 +58,67 @@ async function tick() {
       sendPushToUser(user.id, payload).catch((e) => console.warn('[scheduler] push error', e.message));
 
       if (user.phone && user.whatsappOptIn && sysCfg.whatsapp_auto_dose_reminder !== 'false') {
-        const waMsg =
-          user.locale === 'en'
-            ? `[Apoteku Reminder] Hello ${user.name}, it is time to take your medication: *${dose.medication.name}*${dose.medication.dosage ? ` (${dose.medication.dosage})` : ''}.${dose.medication.instructions ? ` Note: ${dose.medication.instructions}` : ''} Please confirm in the app once taken.`
-            : `[Pengingat Obat Apoteku] Halo ${user.name}, saatnya minum obat Anda: *${dose.medication.name}*${dose.medication.dosage ? ` (${dose.medication.dosage})` : ''}.${dose.medication.instructions ? ` Aturan pakai: ${dose.medication.instructions}` : ''} Silakan konfirmasi di aplikasi setelah diminum.`;
         sendWhatsAppMessage({
           phone: user.phone,
-          message: waMsg,
+          message: t.waDoseReminder({
+            name: user.name,
+            medName: dose.medication.name,
+            dosage: dose.medication.dosage,
+            instructions: dose.medication.instructions,
+          }),
           category: 'DOSE_REMINDER',
           userId: user.id,
           patientId: dose.patientId,
         }).catch((e) => console.warn('[scheduler] whatsapp error', e.message));
+      }
+    }
+
+    // Check-up / Follow-up Reminders due within next 24h
+    const checkupsDue = await prisma.checkupReminder.findMany({
+      where: {
+        status: 'UPCOMING',
+        remindedAt: null,
+        scheduledAt: { gte: now, lte: new Date(+now + 24 * 3600000) },
+      },
+      include: { patient: { include: { user: true } } },
+      take: 200,
+    });
+
+    for (const c of checkupsDue) {
+      const claimed = await prisma.checkupReminder.updateMany({
+        where: { id: c.id, remindedAt: null },
+        data: { remindedAt: now },
+      });
+      if (!claimed.count) continue;
+      const user = c.patient.user;
+      if (!user.active) continue;
+      const ct = tr(user.locale);
+      const whenStr = formatLocal(c.scheduledAt, user.timezone, 'dd MMM yyyy HH:mm');
+      emitToUser(user.id, 'checkup:due', {
+        id: c.id,
+        title: c.title,
+        scheduledAt: c.scheduledAt,
+        location: c.location,
+      });
+      sendPushToUser(user.id, {
+        title: ct.checkupTitle,
+        body: ct.checkupBody(c.title, whenStr),
+        url: '/blood-pressure?tab=checkups',
+        tag: `checkup-${c.id}`,
+      }).catch(() => {});
+      if (user.phone && user.whatsappOptIn) {
+        sendWhatsAppMessage({
+          phone: user.phone,
+          message: ct.waCheckupReminder({
+            name: user.name,
+            title: c.title,
+            when: whenStr,
+            location: c.location,
+          }),
+          category: 'FOLLOW_UP',
+          userId: user.id,
+          patientId: c.patientId,
+        }).catch(() => {});
       }
     }
 

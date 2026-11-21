@@ -8,6 +8,7 @@ import { emitToPatient } from '../realtime.js';
 import { sendPushToUsers } from '../push.js';
 import { addDays, localDate, startOfLocalDay } from '../time.js';
 import { sendWhatsAppMessage } from '../whatsapp.js';
+import { tr } from '../i18n.js';
 
 export const patientScoped = Router({ mergeParams: true });
 export const flat = Router();
@@ -76,30 +77,41 @@ patientScoped.post('/blood-pressure', resolvePatient, async (req, res) => {
   emitToPatient(req.patient.id, 'blood-pressure:changed', enriched);
 
   if (enriched.category === 'CRITICAL' || enriched.category === 'HIGH') {
-    const recipients = req.patient.pharmacistId
-      ? [req.patient.pharmacistId]
-      : (await prisma.user.findMany({
+    const staffUsers = req.patient.pharmacistId
+      ? await prisma.user.findMany({
+          where: { id: req.patient.pharmacistId, active: true },
+          select: { id: true, locale: true },
+        })
+      : await prisma.user.findMany({
           where: { role: { in: ['PHARMACIST', 'ADMIN'] }, active: true },
-          select: { id: true },
-        })).map((user) => user.id);
+          select: { id: true, locale: true },
+        });
     if (enriched.category === 'CRITICAL') {
-      sendPushToUsers(recipients, {
-        title: 'Pemantauan tekanan darah',
-        body: `${req.patient.studyCode || 'Pasien'}: ${log.systolic}/${log.diastolic} mmHg. Tinjau hasil pengukuran.`,
-        url: `/staff/patients/${req.patient.id}`,
-        tag: `bp-${req.patient.id}`,
-      }).catch(() => {});
+      const who = req.patient.studyCode || req.patient.user?.name || 'Patient';
+      await Promise.all(
+        staffUsers.map((su) => {
+          const st = tr(su.locale);
+          return sendPushToUsers([su.id], {
+            title: st.bpCriticalTitle,
+            body: st.bpCriticalBody(who, log.systolic, log.diastolic),
+            url: `/staff/patients/${req.patient.id}`,
+            tag: `bp-${req.patient.id}`,
+          }).catch(() => {});
+        }),
+      );
     }
 
     const pUser = await prisma.user.findUnique({ where: { id: req.patient.userId } });
     if (pUser?.phone && pUser?.whatsappOptIn) {
-      const waMsg =
-        pUser.locale === 'en'
-          ? `[Apoteku BP Alert] Hello ${pUser.name}, your blood pressure reading of *${log.systolic}/${log.diastolic} mmHg* is classified as *${enriched.category}*. ${enriched.category === 'CRITICAL' ? 'Please seek immediate medical evaluation or contact your clinical pharmacist.' : 'Please rest, re-measure in 15 minutes, and consult your pharmacist.'}`
-          : `[Peringatan Tekanan Darah Apoteku] Halo ${pUser.name}, hasil pengukuran tekanan darah Anda *${log.systolic}/${log.diastolic} mmHg* termasuk kategori *${enriched.category === 'CRITICAL' ? 'KRITIS' : 'TINGGI'}*. ${enriched.category === 'CRITICAL' ? 'Segera hubungi fasilitas kesehatan atau apoteker Anda bila disertai keluhan.' : 'Silakan istirahat tenang dan konsultasikan dengan apoteker Anda.'}`;
+      const pt = tr(pUser.locale);
       sendWhatsAppMessage({
         phone: pUser.phone,
-        message: waMsg,
+        message: pt.waBpAlert({
+          name: pUser.name,
+          systolic: log.systolic,
+          diastolic: log.diastolic,
+          category: enriched.category,
+        }),
         category: 'BP_ALERT',
         userId: pUser.id,
         patientId: req.patient.id,

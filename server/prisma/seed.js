@@ -378,6 +378,224 @@ async function main() {
     });
   }
 
+  // Seed sample Health Parameters & Checkup Reminders for demo patient P-001
+  const existingParams = await prisma.healthParameterLog.count({ where: { patientId: patient.id } });
+  if (!existingParams) {
+    const weights = [63.2, 63.6, 64.1, 64.4, 64.8];
+    await prisma.healthParameterLog.createMany({
+      data: [
+        ...weights.map((val, idx) => ({
+          patientId: patient.id,
+          type: 'WEIGHT',
+          value: val,
+          unit: 'kg',
+          context: 'MORNING',
+          note: idx === weights.length - 1 ? 'Kenaikan berat badan stabil sesuai usia kehamilan.' : null,
+          source: 'SELF',
+          measuredAt: DateTime.now().setZone(TZ).startOf('day').minus({ days: (weights.length - 1 - idx) * 3 }).set({ hour: 7, minute: 30 }).toJSDate(),
+        })),
+        {
+          patientId: patient.id,
+          type: 'HEART_RATE',
+          value: 78,
+          unit: 'bpm',
+          context: 'RESTING',
+          source: 'SELF',
+          measuredAt: DateTime.now().setZone(TZ).minus({ days: 1 }).set({ hour: 8, minute: 20 }).toJSDate(),
+        },
+        {
+          patientId: patient.id,
+          type: 'SPO2',
+          value: 98,
+          unit: '%',
+          context: 'RESTING',
+          source: 'SELF',
+          measuredAt: DateTime.now().setZone(TZ).minus({ days: 1 }).set({ hour: 8, minute: 25 }).toJSDate(),
+        },
+        {
+          patientId: patient.id,
+          type: 'FETAL_MOVEMENT',
+          value: 12,
+          unit: 'kicks/2h',
+          context: 'EVENING',
+          note: 'Gerakan janin aktif setelah makan malam.',
+          source: 'SELF',
+          measuredAt: DateTime.now().setZone(TZ).minus({ hours: 10 }).toJSDate(),
+        },
+      ],
+    });
+  }
+
+  const existingCheckups = await prisma.checkupReminder.count({ where: { patientId: patient.id } });
+  if (!existingCheckups) {
+    await prisma.checkupReminder.createMany({
+      data: [
+        {
+          patientId: patient.id,
+          createdById: pharmacist.id,
+          title: 'Kontrol Antenatal (ANC) & Evaluasi Tekanan Darah',
+          type: 'CHECKUP',
+          scheduledAt: DateTime.now().setZone(TZ).plus({ days: 3 }).set({ hour: 9, minute: 30 }).toJSDate(),
+          location: 'Poli Obgyn RSIA Mitra',
+          notes: 'Bawa catatan tekanan darah 2 minggu terakhir dari aplikasi DoseMate.',
+          status: 'UPCOMING',
+        },
+        {
+          patientId: patient.id,
+          createdById: pharmacist.id,
+          title: 'Tindak Lanjut Pemantauan Terapi Obat (PTO)',
+          type: 'FOLLOW_UP',
+          scheduledAt: DateTime.now().setZone(TZ).plus({ days: 7 }).set({ hour: 10, minute: 0 }).toJSDate(),
+          location: 'Telefarmasi DoseMate',
+          notes: 'Evaluasi kepatuhan aspirin dosis rendah dan suplemen kalsium.',
+          status: 'UPCOMING',
+        },
+        {
+          patientId: patient.id,
+          createdById: pharmacist.id,
+          title: 'Pengambilan Ulang Obat (Refill Resep)',
+          type: 'REFILL',
+          scheduledAt: DateTime.now().setZone(TZ).plus({ days: 11 }).set({ hour: 14, minute: 0 }).toJSDate(),
+          location: 'Instalasi Farmasi Klinis',
+          notes: 'Siapkan sisa blister obat untuk rekonsiliasi.',
+          status: 'UPCOMING',
+        },
+      ],
+    });
+  }
+
+  // Seed additional realistic cohort patients so Pharmacist Dashboard KPIs, At-Risk, Trends & Activity are rich
+  const extraCohort = [
+    {
+      email: 'siti@rara.local',
+      phone: '+6281211112222',
+      name: 'Siti Rahmawati',
+      studyCode: 'P-002',
+      diagnosis: 'Hipertensi gestasional, pemantauan risiko preeklampsia',
+      medName: 'Amlodipine',
+      dosage: '5 mg',
+      times: ['08:00', '20:00'],
+      adherenceTarget: 0.62,
+      bpSeries: [[154, 98, 88], [150, 95, 86], [148, 94, 85], [152, 96, 87], [150, 95, 84]],
+      msg: 'Halo apoteker, saya ingin bertanya mengenai efek samping Amlodipine, apakah normal jika kaki sedikit bengkak?',
+    },
+    {
+      email: 'dewi@rara.local',
+      phone: '+6281233334444',
+      name: 'Dewi Lestari',
+      studyCode: 'P-003',
+      diagnosis: 'Hipertensi kronis pada kehamilan trimester II',
+      medName: 'Metildopa',
+      dosage: '250 mg',
+      times: ['07:00', '19:00'],
+      adherenceTarget: 0.72,
+      bpSeries: [[144, 92, 82], [142, 90, 81], [138, 88, 80], [141, 90, 82], [140, 90, 80]],
+      msg: 'Selamat siang, kemarin saya lupa minum dosis sore karena ketiduran. Hari ini sudah saya lanjutkan normal.',
+    },
+    {
+      email: 'nur@rara.local',
+      phone: '+6281255556666',
+      name: 'Nur Aisyah',
+      studyCode: 'P-004',
+      diagnosis: 'Kehamilan risiko preeklampsia ringan — terapi profilaksis',
+      medName: 'Aspirin dosis rendah',
+      dosage: '80 mg',
+      times: ['07:00'],
+      adherenceTarget: 0.92,
+      bpSeries: [[132, 84, 78], [130, 82, 76], [128, 80, 77], [134, 84, 79], [128, 82, 76]],
+      msg: 'Alhamdulillah obat minggu ini rutin diminum, tekanan darah juga stabil.',
+    },
+  ];
+
+  for (const c of extraCohort) {
+    const u = await upsertUser({
+      email: c.email,
+      password: 'pasien123',
+      phone: c.phone,
+      name: c.name,
+      role: 'PATIENT',
+      timezone: TZ,
+    });
+    const p = await prisma.patient.upsert({
+      where: { userId: u.id },
+      update: {
+        pharmacistId: pharmacist.id,
+        studyCode: c.studyCode,
+        diagnosis: c.diagnosis,
+      },
+      create: {
+        userId: u.id,
+        pharmacistId: pharmacist.id,
+        studyCode: c.studyCode,
+        gender: 'FEMALE',
+        diagnosis: c.diagnosis,
+        estimatedDueDate: DateTime.now().setZone(TZ).plus({ weeks: 10 }).toJSDate(),
+        studyGroup: 'INTERVENTION',
+        consentedAt: DateTime.now().setZone(TZ).minus({ days: 12 }).toJSDate(),
+      },
+    });
+    const cnt = await prisma.medication.count({ where: { patientId: p.id } });
+    if (!cnt) {
+      const start = DateTime.now().setZone(TZ).startOf('day').minus({ days: 10 });
+      const med = await prisma.medication.create({
+        data: {
+          patientId: p.id,
+          name: c.medName,
+          dosage: c.dosage,
+          form: 'Tablet',
+          instructions: 'Minum rutin sesuai jadwal alarm DoseMate.',
+          times: c.times,
+          startDate: start.toJSDate(),
+          createdAt: start.toJSDate(),
+          createdById: pharmacist.id,
+        },
+      });
+      const doseRows = [];
+      const now = new Date();
+      let idx = 0;
+      for (let d = 0; d < 10; d++) {
+        const day = start.plus({ days: d });
+        for (const tStr of c.times) {
+          const [hh, mm] = tStr.split(':').map(Number);
+          const at = day.set({ hour: hh, minute: mm });
+          if (at.toJSDate() > now) continue;
+          idx++;
+          const ratio = (idx * 37 % 100) / 100;
+          const status = ratio < c.adherenceTarget ? 'TAKEN' : ratio < c.adherenceTarget + 0.12 ? 'SKIPPED' : 'MISSED';
+          doseRows.push({
+            medicationId: med.id,
+            patientId: p.id,
+            scheduledAt: at.toJSDate(),
+            status,
+            remindedAt: at.toJSDate(),
+            takenAt: status === 'TAKEN' ? at.plus({ minutes: 10 }).toJSDate() : null,
+          });
+        }
+      }
+      await prisma.doseLog.createMany({ data: doseRows, skipDuplicates: true });
+
+      await prisma.bloodPressureLog.createMany({
+        data: c.bpSeries.map(([sys, dia, pulse], i) => ({
+          patientId: p.id,
+          systolic: sys,
+          diastolic: dia,
+          pulse,
+          measuredAt: DateTime.now().setZone(TZ).startOf('day').minus({ days: c.bpSeries.length - 1 - i }).set({ hour: 8, minute: 30 }).toJSDate(),
+          source: 'SELF',
+        })),
+      });
+
+      await prisma.message.create({
+        data: {
+          patientId: p.id,
+          senderId: u.id,
+          body: c.msg,
+          createdAt: DateTime.now().setZone(TZ).minus({ hours: 4 }).toJSDate(),
+        },
+      });
+    }
+  }
+
   // Seed sample WhatsApp Logs
   const waCount = await prisma.whatsAppLog.count();
   if (!waCount) {
@@ -389,7 +607,7 @@ async function main() {
           phone: '+6281234567890',
           direction: 'OUTBOUND',
           category: 'DOSE_REMINDER',
-          message: '[Pengingat Obat Apoteku] Halo Aisyah Rahmadani, saatnya minum obat Anda: *Aspirin dosis rendah* (80 mg). Silakan konfirmasi di aplikasi setelah diminum.',
+          message: '[Pengingat DoseMate] Halo Aisyah Rahmadani, saatnya minum obat Anda: *Aspirin dosis rendah* (80 mg). Silakan konfirmasi di aplikasi setelah diminum.',
           status: 'DELIVERED',
           provider: 'SIMULATOR',
           externalId: 'wa-seed-101',
@@ -400,7 +618,7 @@ async function main() {
           phone: '+6281234567890',
           direction: 'OUTBOUND',
           category: 'FOLLOW_UP',
-          message: '[Tindak Lanjut Apoteker Apoteku] Halo Aisyah Rahmadani, Apoteker Rabiatul Adawiah, S.Farm., Apt. telah mencatat evaluasi terapi obat Anda. Rencana Terapi: Lanjutkan Aspirin 80 mg & Kalsium 500 mg sesuai jadwal.',
+          message: '[Tindak Lanjut DoseMate] Halo Aisyah Rahmadani, Apoteker Rabiatul Adawiah, S.Farm., Apt. telah mencatat evaluasi terapi obat Anda. Rencana Terapi: Lanjutkan Aspirin 80 mg & Kalsium 500 mg sesuai jadwal.',
           status: 'DELIVERED',
           provider: 'SIMULATOR',
           externalId: 'wa-seed-102',

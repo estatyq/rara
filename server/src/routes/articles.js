@@ -15,7 +15,11 @@ const articleSchema = z.object({
     .toLowerCase()
     .regex(/^[a-z0-9-]+$/, 'Use lowercase letters, digits and dashes')
     .max(100),
-  category: z.string().trim().min(1).max(50),
+  category: z.string().trim().min(1).max(80),
+  mediaType: z.enum(['ARTICLE', 'VIDEO']).default('ARTICLE'),
+  coverImage: z.preprocess(emptyToNull, z.string().trim().max(500).nullable().optional()),
+  videoUrl: z.preprocess(emptyToNull, z.string().trim().max(500).nullable().optional()),
+  durationLabel: z.preprocess(emptyToNull, z.string().trim().max(50).nullable().optional()),
   drugName: z.preprocess(emptyToNull, z.string().trim().max(100).nullable().optional()),
   titleId: z.string().trim().min(1).max(200),
   titleEn: z.string().trim().min(1).max(200),
@@ -27,8 +31,8 @@ const articleSchema = z.object({
 });
 
 const listSelect = {
-  id: true, slug: true, category: true, drugName: true, titleId: true, titleEn: true,
-  summaryId: true, summaryEn: true, published: true, updatedAt: true,
+  id: true, slug: true, category: true, mediaType: true, coverImage: true, videoUrl: true, durationLabel: true,
+  drugName: true, titleId: true, titleEn: true, summaryId: true, summaryEn: true, published: true, updatedAt: true,
 };
 
 router.get('/', async (req, res) => {
@@ -36,6 +40,9 @@ router.get('/', async (req, res) => {
   const where = {};
   if (!isStaff(req.user)) where.published = true;
   if (req.query.category) where.category = req.query.category.toString();
+  if (req.query.mediaType && ['ARTICLE', 'VIDEO'].includes(String(req.query.mediaType))) {
+    where.mediaType = String(req.query.mediaType);
+  }
   if (q) {
     where.OR = ['titleId', 'titleEn', 'drugName', 'summaryId', 'summaryEn', 'bodyId', 'bodyEn'].map((f) => ({
       [f]: { contains: q, mode: 'insensitive' },

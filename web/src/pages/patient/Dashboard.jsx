@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, X, Clock, MessageSquare, AlertCircle, ShieldAlert, Sparkles, BookOpen, Activity, ArrowRight, ClipboardList, Stethoscope, FileText } from 'lucide-react';
+import {
+  Check, X, Clock, MessageSquare, Bell, BookOpen, Activity, ArrowRight,
+  ClipboardList, Stethoscope, CalendarClock, Pill, HeartPulse, CheckCircle2
+} from 'lucide-react';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -10,30 +13,34 @@ import { dateTimeInputInZone } from '../../utils/date';
 
 export default function PatientDashboard() {
   const { user } = useAuth();
-  const { t, lang } = useLanguage();
-  const { socket } = useSocket();
+  const { t, lang, dateLocale } = useLanguage();
+  const { socket, triggerAlarm } = useSocket();
 
   const [doses, setDoses] = useState([]);
   const [adherence, setAdherence] = useState(null);
   const [bloodPressure, setBloodPressure] = useState(null);
+  const [checkups, setCheckups] = useState([]);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submittingId, setSubmittingId] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
-      const today = dateTimeInputInZone(new Date(), user.timezone).slice(0, 10);
-      const [dosesRes, adhRes, bpRes, messagesRes] = await Promise.all([
+      const tz = user.timezone || 'Asia/Jakarta';
+      const today = dateTimeInputInZone(new Date(), tz).slice(0, 10);
+      const [dosesRes, adhRes, bpRes, messagesRes, checkupRes] = await Promise.all([
         api.getDoses('me', today, today),
         api.getAdherence('me', 30),
         api.getBloodPressures('me', 30, 1).catch(() => ({ summary: null })),
         api.getMessages('me', 50).catch(() => ({ messages: [] })),
+        api.getCheckups('me').catch(() => ({ reminders: [] })),
       ]);
       setDoses(dosesRes.doses || []);
       setAdherence(adhRes);
       setBloodPressure(bpRes.summary || null);
+      setCheckups((checkupRes.reminders || []).filter((r) => r.status === 'UPCOMING'));
       setUnreadMessages(
-        (messagesRes.messages || []).filter((message) => !message.readAt && message.sender?.role !== 'PATIENT').length,
+        (messagesRes.messages || []).filter((m) => !m.readAt && m.sender?.role !== 'PATIENT').length,
       );
     } catch (err) {
       console.error(err);
@@ -46,21 +53,24 @@ export default function PatientDashboard() {
     loadData();
   }, [loadData]);
 
-  // Listen for real-time updates
   useEffect(() => {
     if (!socket) return;
     const handleUpdate = () => loadData();
+    const handleNewMsg = () => setUnreadMessages((prev) => prev + 1);
     socket.on('dose:updated', handleUpdate);
     socket.on('dose:due', handleUpdate);
     socket.on('medications:changed', handleUpdate);
     socket.on('blood-pressure:changed', handleUpdate);
-    socket.on('message:new', () => setUnreadMessages((prev) => prev + 1));
+    socket.on('checkup:changed', handleUpdate);
+    socket.on('message:new', handleNewMsg);
 
     return () => {
       socket.off('dose:updated', handleUpdate);
       socket.off('dose:due', handleUpdate);
       socket.off('medications:changed', handleUpdate);
       socket.off('blood-pressure:changed', handleUpdate);
+      socket.off('checkup:changed', handleUpdate);
+      socket.off('message:new', handleNewMsg);
     };
   }, [socket, loadData]);
 
@@ -69,12 +79,7 @@ export default function PatientDashboard() {
     try {
       let finalNote = note;
       if (status === 'SKIPPED' && finalNote === undefined) {
-        finalNote = window.prompt(
-          lang === 'id'
-            ? 'Alasan melewati dosis ini (opsional, misal: mual atau lupa):'
-            : 'Reason for skipping this dose (optional, e.g. nausea):',
-          '',
-        );
+        finalNote = window.prompt(t.patient.skipPrompt, '');
         if (finalNote === null) {
           setSubmittingId(null);
           return;
@@ -83,37 +88,71 @@ export default function PatientDashboard() {
       await api.updateDoseStatus(doseId, status, finalNote || undefined);
       await loadData();
     } catch (err) {
-      alert(err.message || 'Gagal memperbarui status');
+      alert(err.message || t.common.loading);
     } finally {
       setSubmittingId(null);
     }
   };
 
+  const firstName = (user.name || '').split(' ')[0];
   const takenCount = doses.filter((d) => d.status === 'TAKEN').length;
   const totalCount = doses.length;
-  const progressPct = totalCount ? Math.round((takenCount / totalCount) * 100) : 0;
+  const todayPct = totalCount ? Math.round((takenCount / totalCount) * 100) : 100;
+  const nextDose = doses.find((d) => d.status === 'PENDING') || doses[0] || null;
+  const nextCheckup = checkups[0] || null;
 
-  const todayStr = new Intl.DateTimeFormat(lang === 'id' ? 'id-ID' : 'en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    timeZone: user.timezone,
-  }).format(new Date());
+  const formatTime = (iso) =>
+    new Intl.DateTimeFormat(dateLocale, {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: user.timezone || 'Asia/Jakarta',
+    }).format(new Date(iso));
+
+  const formatDateShort = (iso) =>
+    new Intl.DateTimeFormat(dateLocale, {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: user.timezone || 'Asia/Jakarta',
+    }).format(new Date(iso));
 
   const gestationalAge = (() => {
     if (!user.patient?.estimatedDueDate) return null;
     const daysRemaining = Math.ceil((new Date(user.patient.estimatedDueDate) - new Date()) / 86400000);
     const daysPregnant = Math.max(0, Math.min(294, 280 - daysRemaining));
-    return {
-      weeks: Math.floor(daysPregnant / 7),
-      days: daysPregnant % 7,
-    };
+    return { weeks: Math.floor(daysPregnant / 7), days: daysPregnant % 7 };
   })();
+
+  const handlePreviewAlarm = () => {
+    const target = nextDose;
+    triggerAlarm({
+      type: 'dose',
+      doseId: target?.id || null,
+      medication: target?.medication?.name || 'Aspirin dosis rendah',
+      dosage: target?.medication?.dosage || '80 mg',
+      instructions: target?.medication?.instructions || null,
+      title: t.alarm.pushHeader,
+      message: target
+        ? `${target.medication.name}${target.medication.dosage ? ` • ${target.medication.dosage}` : ''}`
+        : 'Aspirin dosis rendah • 80 mg',
+    });
+  };
+
+  const quickActions = [
+    { to: '/medications', label: t.patient.quickGrid.history, icon: Pill, bg: 'bg-teal-50 text-teal-700 border-teal-100' },
+    { to: '/blood-pressure', label: t.patient.quickGrid.health, icon: HeartPulse, bg: 'bg-sky-50 text-sky-700 border-sky-100' },
+    { to: '/education', label: t.patient.quickGrid.education, icon: BookOpen, bg: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+    { to: '/chat', label: t.patient.quickGrid.pharmacist, icon: MessageSquare, bg: 'bg-cyan-50 text-cyan-700 border-cyan-100', badge: unreadMessages },
+    { to: '/services', label: t.patient.quickGrid.care, icon: Stethoscope, bg: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
+    { to: '/surveys', label: t.patient.quickGrid.surveys, icon: ClipboardList, bg: 'bg-amber-50 text-amber-700 border-amber-100' },
+  ];
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-8 text-center text-slate-500">
+      <div className="max-w-5xl mx-auto px-4 py-14 text-center text-slate-500">
         <div className="animate-spin w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full mx-auto mb-3" />
         {t.common.loading}
       </div>
@@ -121,202 +160,251 @@ export default function PatientDashboard() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 pb-20 space-y-6">
-      {/* Welcome & Date Banner */}
-      <div className="bg-gradient-to-r from-teal-700 to-teal-800 rounded-3xl p-6 sm:p-8 text-white shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      {/* Greeting Row matching DoseMate Mobile Mockup */}
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <span className="text-teal-200 text-xs font-semibold uppercase tracking-wider">
-            {todayStr}
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">
-            {lang === 'id' ? `Halo, ${user.name} 👋` : `Hello, ${user.name} 👋`}
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+            {lang === 'id' ? `Halo, ${firstName}!` : `Hello, ${firstName}!`} 👋
           </h1>
-          <p className="text-teal-100 text-sm mt-1 max-w-lg">
-            {lang === 'id'
-              ? 'Tetap rutin minum obat dan catat tekanan darah untuk membantu pemantauan kehamilan Anda.'
-              : 'Keep taking your medicines and recording blood pressure to support your pregnancy monitoring.'}
+          <p className="text-sm text-slate-500 mt-0.5 flex flex-wrap items-center gap-2">
+            <span>{t.patient.greetingSub}</span>
+            {gestationalAge && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-50 text-teal-800 border border-teal-100">
+                {lang === 'id'
+                  ? `Usia kehamilan: ${gestationalAge.weeks} mgg ${gestationalAge.days} hr`
+                  : `Gestational age: ${gestationalAge.weeks}w ${gestationalAge.days}d`}
+              </span>
+            )}
           </p>
-          {gestationalAge && (
-            <span className="inline-flex mt-3 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold text-teal-50">
-              {lang === 'id' ? 'Usia kehamilan' : 'Gestational age'}: {gestationalAge.weeks} {lang === 'id' ? 'minggu' : 'weeks'} {gestationalAge.days} {lang === 'id' ? 'hari' : 'days'}
-            </span>
-          )}
         </div>
 
-        {/* Adherence Mini Card */}
-        <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 flex items-center gap-4 self-start sm:self-center">
-          <div className="text-center">
-            <span className="text-3xl font-extrabold leading-none">
-              {adherence?.rate !== null && adherence?.rate !== undefined ? `${Math.round(adherence.rate)}%` : '—'}
-            </span>
-            <span className="block text-[10px] uppercase font-semibold text-teal-200 mt-1">
-              {t.patient.adherenceRate}
-            </span>
-          </div>
-        </div>
+        <button
+          type="button"
+          onClick={handlePreviewAlarm}
+          className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white border border-teal-100 text-teal-700 hover:bg-teal-50 shadow-xs text-xs font-bold transition shrink-0"
+          title={t.alarm.testAlarm}
+        >
+          <Bell className="w-4 h-4 text-teal-600" />
+          <span className="hidden sm:inline">{t.alarm.testAlarm}</span>
+        </button>
       </div>
 
-      {/* Grid: Dose Schedule & Adherence Stats */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Schedule */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 tracking-tight">
-                  {t.patient.todaySchedule}
-                </h2>
-                <p className="text-xs text-slate-500">
-                  {takenCount} dari {totalCount} {t.patient.dosesTaken}
-                </p>
+      {/* Main Responsive 2-Column Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Primary Column */}
+        <div className="lg:col-span-7 space-y-5">
+          {/* Soft-Mint Today's Adherence Highlight Card (DoseMate Screen 2) */}
+          <div className="bg-gradient-to-br from-[#DFF6EC] via-[#E9F9F2] to-[#E6F4F9] rounded-3xl p-5 sm:p-6 border border-emerald-200/70 shadow-sm flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-teal-800">
+                {t.patient.todayAdherence}
+              </p>
+              <div className="text-4xl sm:text-5xl font-extrabold text-teal-900 mt-1 tracking-tight">
+                {todayPct}%
+              </div>
+              <p className="text-xs font-bold text-emerald-700 mt-1.5 flex items-center gap-1.5">
+                <Check className="w-4 h-4" />
+                <span>
+                  {totalCount > 0 && takenCount === totalCount
+                    ? t.patient.allTakenBadge
+                    : `${takenCount} / ${totalCount} ${t.patient.inProgressBadge}`}
+                </span>
+              </p>
+            </div>
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-teal-600 text-white flex items-center justify-center shadow-lg shadow-teal-600/20 shrink-0">
+              <CheckCircle2 className="w-9 h-9 sm:w-11 sm:h-11" />
+            </div>
+          </div>
+
+          {/* Next Medication Spotlight Card (DoseMate Screen 2) */}
+          {nextDose && (
+            <div className="bg-white rounded-3xl p-5 border border-teal-100 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                  {t.patient.nextMedication}
+                </span>
+                <span className="text-[11px] font-bold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full">
+                  {nextDose.status === 'PENDING' ? t.patient.statusPending : t.patient.statusTaken}
+                </span>
               </div>
 
-              {/* Progress Bar */}
-              <div className="w-28 bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                <div
-                  className="bg-teal-600 h-2.5 rounded-full transition-all duration-500"
-                  style={{ width: `${progressPct}%` }}
-                />
+              <div className="flex items-center gap-4">
+                <div className="px-3.5 py-2.5 rounded-2xl bg-[#F0FAF8] border border-teal-100 text-center shrink-0">
+                  <div className="text-xl font-extrabold text-teal-900 leading-none">
+                    {formatTime(nextDose.scheduledAt)}
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-extrabold text-slate-900 text-base truncate">
+                    {nextDose.medication.name}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    {nextDose.medication.dosage || '—'}
+                    {nextDose.medication.form ? ` • ${nextDose.medication.form}` : ''}
+                  </div>
+                </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {nextDose.status === 'PENDING' ? (
+                  <button
+                    type="button"
+                    disabled={submittingId === nextDose.id}
+                    onClick={() => handleStatusChange(nextDose.id, 'TAKEN')}
+                    className="py-2.5 px-4 rounded-full bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>{t.patient.takeDose}</span>
+                  </button>
+                ) : (
+                  <Link
+                    to="/medications"
+                    className="py-2.5 px-4 rounded-full bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition"
+                  >
+                    <span>{t.patient.quickGrid.history}</span>
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  onClick={handlePreviewAlarm}
+                  className="py-2.5 px-4 rounded-full bg-[#EAF7F6] hover:bg-teal-100 text-teal-800 font-bold text-xs flex items-center justify-center gap-1.5 transition"
+                >
+                  <Bell className="w-3.5 h-3.5" />
+                  <span>{t.patient.remindMe}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* 3x2 Quick Action Grid (Exact DoseMate Screen 2 layout) */}
+          <div className="grid grid-cols-3 gap-3">
+            {quickActions.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className="relative bg-white hover:bg-[#F7FCFB] rounded-2xl p-4 border border-teal-100/80 shadow-xs flex flex-col items-center justify-center text-center gap-2 transition hover:-translate-y-0.5 hover:shadow-md"
+                >
+                  {item.badge > 0 && (
+                    <span className="absolute top-2.5 right-2.5 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-extrabold flex items-center justify-center">
+                      {item.badge}
+                    </span>
+                  )}
+                  <div className={`w-11 h-11 rounded-2xl border flex items-center justify-center ${item.bg}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-800 leading-tight">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+
+          {/* Full Today's Schedule List */}
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-teal-100/80 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900">{t.patient.todaySchedule}</h2>
+                <p className="text-xs text-slate-500">
+                  {takenCount} / {totalCount} {t.patient.dosesTaken}
+                </p>
+              </div>
+              <Link to="/medications" className="text-xs font-bold text-teal-700 hover:underline flex items-center gap-1">
+                <span>{t.common.viewAll}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
 
             {doses.length === 0 ? (
-              <div className="py-12 text-center text-slate-400">
-                <Sparkles className="w-10 h-10 mx-auto text-teal-400 mb-2 stroke-1" />
-                <p className="text-sm font-medium">{t.patient.noDosesToday}</p>
-                <Link to="/medications" className="mt-2 inline-block text-xs text-teal-600 font-semibold hover:underline">
-                  {t.patient.myMedsTitle} →
-                </Link>
-              </div>
+              <div className="py-8 text-center text-sm text-slate-400">{t.patient.noDosesToday}</div>
             ) : (
               <div className="space-y-3">
                 {doses.map((dose) => {
-                  const scheduledTime = new Intl.DateTimeFormat('id-ID', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false,
-                    timeZone: user.timezone,
-                  }).format(new Date(dose.scheduledAt));
-
                   const isTaken = dose.status === 'TAKEN';
                   const isSkipped = dose.status === 'SKIPPED';
                   const isMissed = dose.status === 'MISSED';
-                  const isPending = dose.status === 'PENDING';
-                  const isBusy = submittingId === dose.id;
-
                   return (
                     <div
                       key={dose.id}
-                      className={`p-4 rounded-xl border transition-all ${
+                      className={`rounded-2xl p-4 border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                         isTaken
                           ? 'bg-emerald-50/50 border-emerald-200'
-                          : isSkipped
-                          ? 'bg-slate-50 border-slate-200 opacity-70'
-                          : isMissed
-                          ? 'bg-rose-50/60 border-rose-200'
-                          : 'bg-white border-slate-200 hover:border-teal-300 shadow-sm'
+                          : isSkipped || isMissed
+                          ? 'bg-slate-50 border-slate-200'
+                          : 'bg-[#F8FCFB] border-teal-100'
                       }`}
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="inline-flex items-center gap-1 font-bold text-sm px-2 py-0.5 rounded-md bg-slate-100 text-slate-800">
-                              <Clock className="w-3 h-3 text-slate-500" />
-                              {scheduledTime}
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1 text-xs font-extrabold text-teal-900 bg-white px-2.5 py-1 rounded-xl border border-teal-100">
+                            <Clock className="w-3.5 h-3.5 text-teal-600" />
+                            {formatTime(dose.scheduledAt)}
+                          </span>
+                          <span className="font-bold text-sm text-slate-900">{dose.medication.name}</span>
+                          {dose.medication.dosage && (
+                            <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
+                              {dose.medication.dosage}
                             </span>
-                            <span className="font-bold text-slate-900 text-base">
-                              {dose.medication.name}
+                          )}
+                        </div>
+                        {dose.medication.instructions && (
+                          <p className="text-xs text-slate-500 mt-1.5">{dose.medication.instructions}</p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {isTaken ? (
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-600 text-white">
+                              <Check className="w-3.5 h-3.5" />
+                              {t.patient.statusTaken}
                             </span>
-                            {dose.medication.dosage && (
-                              <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
-                                {dose.medication.dosage}
-                              </span>
-                            )}
+                            <button
+                              type="button"
+                              disabled={submittingId === dose.id}
+                              onClick={() => handleStatusChange(dose.id, 'PENDING')}
+                              className="text-xs font-semibold text-slate-500 hover:text-slate-800 px-2 py-1"
+                            >
+                              {t.patient.undo}
+                            </button>
                           </div>
-
-                          {dose.medication.instructions && (
-                            <p className="text-xs text-slate-600 pl-0.5">
-                              {dose.medication.instructions}
-                            </p>
-                          )}
-
-                          {dose.note && (
-                            <p className="text-xs italic text-slate-500 pl-0.5">
-                              "{dose.note}"
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Status / Action Buttons */}
-                        <div className="flex items-center justify-end gap-2 shrink-0 w-full sm:w-auto pt-1 sm:pt-0 border-t border-slate-100 sm:border-0">
-                          {isPending && (
-                            <>
-                              <button
-                                disabled={isBusy}
-                                onClick={() => handleStatusChange(dose.id, 'TAKEN')}
-                                className="flex items-center space-x-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition disabled:opacity-50"
-                              >
-                                <Check className="w-3.5 h-3.5" />
-                                <span>{t.patient.takeDose}</span>
-                              </button>
-                              <button
-                                disabled={isBusy}
-                                onClick={() => handleStatusChange(dose.id, 'SKIPPED')}
-                                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs font-medium transition disabled:opacity-50"
-                                title={t.patient.skipDose}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          )}
-
-                          {isTaken && (
-                            <div className="flex items-center space-x-1.5">
-                              <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-lg">
-                                <Check className="w-3.5 h-3.5 stroke-[3]" />
-                                {t.patient.statusTaken}
-                              </span>
-                              <button
-                                disabled={isBusy}
-                                onClick={() => handleStatusChange(dose.id, 'PENDING')}
-                                className="text-[11px] text-slate-400 hover:text-slate-600 underline"
-                              >
-                                {t.patient.undo}
-                              </button>
-                            </div>
-                          )}
-
-                          {isSkipped && (
-                            <div className="flex items-center space-x-1.5">
-                              <span className="text-xs font-semibold text-slate-600 bg-slate-200 px-2.5 py-1 rounded-lg">
-                                {t.patient.statusSkipped}
-                              </span>
-                              <button
-                                disabled={isBusy}
-                                onClick={() => handleStatusChange(dose.id, 'PENDING')}
-                                className="text-[11px] text-slate-400 hover:text-slate-600 underline"
-                              >
-                                {t.patient.undo}
-                              </button>
-                            </div>
-                          )}
-
-                          {isMissed && (
-                            <div className="flex items-center space-x-1.5">
-                              <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-700 bg-rose-100 px-2.5 py-1 rounded-lg">
-                                <AlertCircle className="w-3.5 h-3.5" />
-                                {t.patient.statusMissed}
-                              </span>
-                              <button
-                                disabled={isBusy}
-                                onClick={() => handleStatusChange(dose.id, 'TAKEN')}
-                                className="text-xs font-semibold text-teal-700 hover:underline"
-                              >
-                                {t.patient.takeDose}
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                        ) : isSkipped || isMissed ? (
+                          <div className="flex items-center gap-2">
+                            <span className="px-3 py-1.5 rounded-full text-xs font-bold bg-slate-200 text-slate-700">
+                              {isSkipped ? t.patient.statusSkipped : t.patient.statusMissed}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={submittingId === dose.id}
+                              onClick={() => handleStatusChange(dose.id, 'TAKEN')}
+                              className="text-xs font-bold text-teal-700 hover:underline px-2 py-1"
+                            >
+                              {t.patient.takeDose}
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              disabled={submittingId === dose.id}
+                              onClick={() => handleStatusChange(dose.id, 'TAKEN')}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs transition disabled:opacity-50"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>{t.patient.takeDose}</span>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={submittingId === dose.id}
+                              onClick={() => handleStatusChange(dose.id, 'SKIPPED')}
+                              className="p-2 rounded-full bg-white border border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-200 transition"
+                              title={t.patient.skipDose}
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </div>
                   );
@@ -326,179 +414,81 @@ export default function PatientDashboard() {
           </div>
         </div>
 
-        {/* Right 1 Col: Adherence Summary & Quick Shortcuts */}
-        <div className="space-y-6">
-          {/* Adherence Card */}
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm text-center">
-            <h3 className="text-sm font-bold text-slate-800 mb-3 text-left">
-              {t.patient.adherenceRate}
-            </h3>
-            <div className="py-2">
-              <AdherenceRing rate={adherence?.rate} size={140} strokeWidth={12} label="30 Hari" />
-            </div>
-            {adherence?.counts && (
-              <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-100 text-center">
-                <div className="bg-emerald-50 rounded-xl p-2 border border-emerald-100">
-                  <span className="block text-base font-extrabold text-emerald-700">
-                    {adherence.counts.TAKEN}
-                  </span>
-                  <span className="text-[10px] font-semibold text-emerald-800 uppercase">
-                    Diminum
-                  </span>
-                </div>
-                <div className="bg-slate-50 rounded-xl p-2 border border-slate-100">
-                  <span className="block text-base font-extrabold text-slate-700">
-                    {adherence.counts.SKIPPED}
-                  </span>
-                  <span className="text-[10px] font-semibold text-slate-600 uppercase">
-                    Lewat
-                  </span>
-                </div>
-                <div className="bg-rose-50 rounded-xl p-2 border border-rose-100">
-                  <span className="block text-base font-extrabold text-rose-700">
-                    {adherence.counts.MISSED}
-                  </span>
-                  <span className="text-[10px] font-semibold text-rose-800 uppercase">
-                    Lupa
-                  </span>
-                </div>
+        {/* Right Secondary Column: 30d Adherence, Blood Pressure, Next Checkup */}
+        <div className="lg:col-span-5 space-y-5">
+          {/* 30-Day Adherence Ring */}
+          <div className="bg-white rounded-3xl p-6 border border-teal-100/80 shadow-sm flex flex-col items-center text-center">
+            <h3 className="text-sm font-extrabold text-slate-900 mb-4">{t.patient.adherenceRate}</h3>
+            <AdherenceRing percentage={adherence?.rate ?? 0} size={132} />
+            <div className="grid grid-cols-3 gap-2.5 w-full mt-5">
+              <div className="rounded-2xl bg-emerald-50/80 p-2.5 border border-emerald-100">
+                <div className="text-lg font-extrabold text-emerald-700">{adherence?.counts?.TAKEN ?? 0}</div>
+                <div className="text-[10px] font-bold uppercase text-emerald-600">{t.patient.statusTaken}</div>
               </div>
-            )}
+              <div className="rounded-2xl bg-amber-50/80 p-2.5 border border-amber-100">
+                <div className="text-lg font-extrabold text-amber-700">{adherence?.counts?.SKIPPED ?? 0}</div>
+                <div className="text-[10px] font-bold uppercase text-amber-600">{t.patient.statusSkipped}</div>
+              </div>
+              <div className="rounded-2xl bg-rose-50/80 p-2.5 border border-rose-100">
+                <div className="text-lg font-extrabold text-rose-700">{adherence?.counts?.MISSED ?? 0}</div>
+                <div className="text-[10px] font-bold uppercase text-rose-600">{t.patient.statusMissed}</div>
+              </div>
+            </div>
           </div>
 
+          {/* Latest Blood Pressure Summary */}
           <Link
             to="/blood-pressure"
-            className="block bg-white rounded-2xl p-5 border border-slate-200 hover:border-rose-300 shadow-sm transition group"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
-                  <Activity className="w-4.5 h-4.5" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                    {lang === 'id' ? 'Tekanan Darah' : 'Blood Pressure'}
-                  </p>
-                  <p className="text-[11px] text-slate-400">
-                    {lang === 'id' ? 'Catat hasil pengukuran hari ini' : 'Record today’s reading'}
-                  </p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-rose-500 group-hover:translate-x-0.5 transition" />
-            </div>
-            {bloodPressure?.latest ? (
-              <div className="mt-4 flex items-end justify-between">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-extrabold text-slate-900">
-                    {bloodPressure.latest.systolic}/{bloodPressure.latest.diastolic}
-                  </span>
-                  <span className="text-[11px] text-slate-400">mmHg</span>
-                </div>
-                <span className={`text-[10px] font-bold rounded-full px-2 py-1 border ${
-                  bloodPressure.latest.category === 'NORMAL'
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    : bloodPressure.latest.category === 'LOW'
-                      ? 'bg-sky-50 text-sky-700 border-sky-200'
-                      : bloodPressure.latest.category === 'ELEVATED'
-                        ? 'bg-amber-50 text-amber-700 border-amber-200'
-                        : 'bg-rose-50 text-rose-700 border-rose-200'
-                }`}>
-                  {bloodPressure.latest.controlled
-                    ? (lang === 'id' ? 'Terkontrol' : 'Controlled')
-                    : (lang === 'id' ? 'Perlu ditinjau' : 'Review')}
-                </span>
-              </div>
-            ) : (
-              <p className="mt-4 text-xs text-slate-400">
-                {lang === 'id' ? 'Belum ada pengukuran tersimpan.' : 'No readings saved yet.'}
-              </p>
-            )}
-          </Link>
-
-          {/* Quick Pharmacy Services Link */}
-          <Link
-            to="/services"
-            className="block bg-white rounded-2xl p-5 border border-slate-200 hover:border-teal-300 shadow-sm transition group"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
-                  <Stethoscope className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-teal-700 transition">
-                    {lang === 'id' ? 'Layanan Kefarmasian' : 'Pharmacy Services'}
-                  </h4>
-                  <p className="text-xs text-slate-500">
-                    {lang === 'id'
-                      ? 'Ajukan evaluasi PTO, rekonsiliasi jadwal obat, atau telefarmasi'
-                      : 'Request PTO evaluation, schedule reconciliation, or telepharmacy'}
-                  </p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-teal-600 transition" />
-            </div>
-          </Link>
-
-          {/* Quick Chat with Pharmacist */}
-          <Link
-            to="/chat"
-            className="block bg-gradient-to-br from-teal-50 to-emerald-50 rounded-2xl p-5 border border-teal-200 hover:shadow-md transition group"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition">
-                <MessageSquare className="w-6 h-6" />
-              </div>
-              <div className="flex-1">
-                <h4 className="text-sm font-bold text-slate-900 group-hover:text-teal-700 transition">
-                  {t.patient.chatGreeting}
-                </h4>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  Tanyakan dosis, efek samping, atau cara minum obat langsung ke apoteker Anda.
-                </p>
-              </div>
-            </div>
-          </Link>
-
-          {/* Educational Articles Quick Link */}
-          <Link
-            to="/education"
-            className="block bg-white rounded-2xl p-5 border border-slate-200 hover:border-teal-300 shadow-sm transition group"
-          >
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-900 group-hover:text-teal-700 transition">
-                  {t.patient.educationTitle}
-                </h4>
-                <p className="text-xs text-slate-500">
-                  Panduan kehamilan risiko tinggi, tekanan darah, dan obat yang diresepkan.
-                </p>
-              </div>
-            </div>
-          </Link>
-
-          <Link
-            to="/surveys"
-            className="block bg-white rounded-2xl p-4 border border-slate-200 hover:border-indigo-300 shadow-sm transition group"
+            className="block bg-white rounded-3xl p-5 border border-teal-100/80 shadow-sm hover:border-teal-300 transition group"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                  <ClipboardList className="w-4 h-4" />
+                <div className="w-11 h-11 rounded-2xl bg-sky-50 text-sky-600 border border-sky-100 flex items-center justify-center">
+                  <Activity className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900">
-                    {lang === 'id' ? 'Kuesioner Penelitian' : 'Study questionnaires'}
-                  </h4>
+                  <h3 className="text-sm font-extrabold text-slate-900">{t.health.tabBp}</h3>
                   <p className="text-xs text-slate-500">
-                    {lang === 'id' ? 'Bantu peneliti memahami pengalaman Anda' : 'Help researchers understand your experience'}
+                    {bloodPressure?.latest
+                      ? `${bloodPressure.latest.systolic}/${bloodPressure.latest.diastolic} mmHg`
+                      : (lang === 'id' ? 'Belum ada pengukuran' : 'No reading yet')}
                   </p>
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-500" />
+              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-teal-600 group-hover:translate-x-0.5 transition" />
+            </div>
+          </Link>
+
+          {/* Upcoming Check-Up Reminder Card */}
+          <Link
+            to="/blood-pressure?tab=checkups"
+            className="block bg-gradient-to-br from-[#EDF9F8] to-white rounded-3xl p-5 border border-teal-100 shadow-sm hover:border-teal-300 transition group"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-teal-600 text-white flex items-center justify-center shrink-0">
+                  <CalendarClock className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-teal-700">
+                    {t.health.tabCheckups}
+                  </span>
+                  {nextCheckup ? (
+                    <>
+                      <h3 className="text-sm font-extrabold text-slate-900 mt-0.5 leading-snug">
+                        {nextCheckup.title}
+                      </h3>
+                      <p className="text-xs text-teal-800 font-semibold mt-1">
+                        {formatDateShort(nextCheckup.scheduledAt)}
+                        {nextCheckup.location ? ` • ${nextCheckup.location}` : ''}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-slate-500 mt-1">{t.health.noCheckups}</p>
+                  )}
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-teal-600 shrink-0 mt-1 group-hover:translate-x-0.5 transition" />
             </div>
           </Link>
         </div>

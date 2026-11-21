@@ -28,7 +28,6 @@ async function request(endpoint, options = {}) {
     throw new ApiError(401, 'Unauthorized');
   }
 
-  // Handle CSV / binary download
   const contentType = res.headers.get('content-type') || '';
   if (contentType.includes('text/csv')) {
     if (!res.ok) throw new ApiError(res.status, 'Export failed');
@@ -49,10 +48,14 @@ export const api = {
   getMe: () => request('/auth/me'),
   updateMe: (data) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
 
-  // Patients
+  // Patients & Pharmacist Dashboard Analytics
   getPatients: (params = {}) => {
     const q = new URLSearchParams(params).toString();
     return request(`/patients${q ? `?${q}` : ''}`);
+  },
+  getDashboardSummary: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/patients/dashboard-summary${q ? `?${q}` : ''}`);
   },
   createPatient: (data) => request('/patients', { method: 'POST', body: JSON.stringify(data) }),
   getPatient: (id) => request(`/patients/${id}`),
@@ -71,6 +74,34 @@ export const api = {
     }),
   deleteBloodPressure: (id) =>
     request(`/blood-pressure/${id}`, { method: 'DELETE' }),
+
+  // Other Health Parameters & Check-Up Reminders (Section B)
+  getHealthParameters: (patientId = 'me', params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/patients/${patientId}/health-parameters${q ? `?${q}` : ''}`);
+  },
+  recordHealthParameter: (patientId, data) =>
+    request(`/patients/${patientId}/health-parameters`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteHealthParameter: (id) =>
+    request(`/health-parameters/${id}`, { method: 'DELETE' }),
+
+  getCheckups: (patientId = 'me') =>
+    request(`/patients/${patientId}/checkups`),
+  createCheckup: (patientId, data) =>
+    request(`/patients/${patientId}/checkups`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateCheckup: (id, data) =>
+    request(`/checkups/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteCheckup: (id) =>
+    request(`/checkups/${id}`, { method: 'DELETE' }),
 
   // Doses & Medications
   getDoses: (patientId = 'me', from, to) => {
@@ -133,7 +164,7 @@ export const api = {
     request(`/patients/${patientId}/messages/read`, { method: 'POST' }),
   getConversations: () => request('/conversations'),
 
-  // Educational Articles
+  // Educational Articles & Videos
   getArticles: (params = {}) => {
     const q = new URLSearchParams(params).toString();
     return request(`/articles${q ? `?${q}` : ''}`);
@@ -156,6 +187,7 @@ export const api = {
   // Push notifications
   getVapidKey: () => request('/push/public-key'),
   subscribePush: (subscription) => request('/push/subscribe', { method: 'POST', body: JSON.stringify(subscription) }),
+  unsubscribePush: (endpoint) => request('/push/unsubscribe', { method: 'POST', body: JSON.stringify({ endpoint }) }),
   testPush: () => request('/push/test', { method: 'POST' }),
 
   // Staff & Admin Management
@@ -177,20 +209,14 @@ export const api = {
   sendAdminWhatsApp: (data) =>
     request('/admin/whatsapp/send', { method: 'POST', body: JSON.stringify(data) }),
 
-  // Research CSV export URL helpers
-  getExportUrl: (type, params = {}) => {
-    const p = new URLSearchParams(params);
-    const token = localStorage.getItem('rara_token');
-    if (token) p.set('token', token);
-    return `${API_BASE}/export/${type}.csv?${p.toString()}`;
-  },
+  // Authenticated CSV export download (never puts JWT in URL query)
   downloadExport: async (type, params = {}) => {
     const q = new URLSearchParams(params).toString();
     const blob = await request(`/export/${type}.csv${q ? `?${q}` : ''}`);
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${type}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `dosemate-${type}-${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(a);
     a.click();
     a.remove();

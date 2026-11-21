@@ -1,11 +1,13 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { translations } from './translations';
+import { api } from '../api/client';
 
 const LanguageContext = createContext(null);
 
 export function LanguageProvider({ children }) {
-  const [lang, setLang] = useState(() => {
-    return localStorage.getItem('rara_lang') || 'id';
+  const [lang, setLangState] = useState(() => {
+    const saved = localStorage.getItem('rara_lang');
+    return saved === 'en' || saved === 'id' ? saved : 'id';
   });
 
   useEffect(() => {
@@ -13,14 +15,23 @@ export function LanguageProvider({ children }) {
     document.documentElement.lang = lang;
   }, [lang]);
 
-  const t = translations[lang] || translations.id;
+  const setLang = useCallback((nextLang, { syncServer = true } = {}) => {
+    const normalized = nextLang === 'en' ? 'en' : 'id';
+    setLangState(normalized);
+    if (syncServer && localStorage.getItem('rara_token')) {
+      api.updateMe({ locale: normalized }).catch(() => {});
+    }
+  }, []);
 
-  const toggleLanguage = () => {
-    setLang((prev) => (prev === 'id' ? 'en' : 'id'));
-  };
+  const toggleLanguage = useCallback(() => {
+    setLang(lang === 'id' ? 'en' : 'id', { syncServer: true });
+  }, [lang, setLang]);
+
+  const t = translations[lang] || translations.id;
+  const dateLocale = lang === 'en' ? 'en-US' : 'id-ID';
 
   return (
-    <LanguageContext.Provider value={{ lang, setLang, t, toggleLanguage }}>
+    <LanguageContext.Provider value={{ lang, setLang, t, toggleLanguage, dateLocale }}>
       {children}
     </LanguageContext.Provider>
   );

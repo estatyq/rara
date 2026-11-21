@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['pill.svg'],
       manifest: {
-        name: 'Apoteku - Pendamping Kepatuhan Obat & Konsultasi Apoteker',
-        short_name: 'Apoteku',
-        description: 'Aplikasi kepatuhan pengobatan dan konsultasi dengan apoteker',
+        name: 'DoseMate — Your medication companion',
+        short_name: 'DoseMate',
+        description: 'Take your medicine. Track your health. Stay supported. Digital medication adherence & pharmaceutical care platform.',
         theme_color: '#0d9488',
         background_color: '#ffffff',
         display: 'standalone',

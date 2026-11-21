@@ -7,6 +7,7 @@ import { adherenceFor } from '../doses.js';
 import { sendWhatsAppMessage, formatWaMeUrl } from '../whatsapp.js';
 import { logAudit } from '../audit.js';
 import { emitToPatient } from '../realtime.js';
+import { tr } from '../i18n.js';
 
 export const patientScoped = Router({ mergeParams: true });
 export const flat = Router();
@@ -88,34 +89,53 @@ patientScoped.post('/follow-ups', requireStaff, resolvePatient, async (req, res)
     },
   });
 
+  const pUser = await prisma.user.findUnique({ where: { id: req.patient.userId } });
+  const pt = tr(pUser?.locale);
+
+  // Automatically create a CheckupReminder when nextFollowUpDate is scheduled
+  if (followUp.nextFollowUpDate) {
+    await prisma.checkupReminder.create({
+      data: {
+        patientId: req.patient.id,
+        createdById: req.user.id,
+        title: pUser?.locale === 'en' ? 'Pharmacotherapy Follow-Up Review' : 'Jadwal Evaluasi Tindak Lanjut (PTO)',
+        type: 'FOLLOW_UP',
+        scheduledAt: followUp.nextFollowUpDate,
+        notes: data.recommendation || data.plan.slice(0, 240),
+        status: 'UPCOMING',
+      },
+    }).catch(() => {});
+  }
+
   if (data.sendToChat) {
-    const summaryMsg = `[Tindak Lanjut Farmakoterapi / PTO]\n• Rencana (Plan): ${data.plan}${
-      data.recommendation ? `\n• Rekomendasi Apoteker: ${data.recommendation}` : ''
-    }`;
-    await prisma.message.create({
+    const summaryMsg = pt.chatFollowUpSummary({
+      plan: data.plan,
+      recommendation: data.recommendation,
+    });
+    const chatMsg = await prisma.message.create({
       data: {
         patientId: req.patient.id,
         senderId: req.user.id,
         body: summaryMsg,
       },
+      include: { sender: { select: { id: true, name: true, role: true } } },
     });
+    emitToPatient(req.patient.id, 'message:new', chatMsg);
   }
 
-  if (data.sendViaWhatsApp) {
-    const pUser = await prisma.user.findUnique({ where: { id: req.patient.userId } });
-    if (pUser?.phone) {
-      const waMsg =
-        pUser.locale === 'en'
-          ? `[Apoteku Pharmacist Follow-Up] Hello ${pUser.name}, ${req.user.name} has recorded a pharmacotherapy follow-up.\nPlan: ${data.plan}${data.recommendation ? `\nRecommendation: ${data.recommendation}` : ''}`
-          : `[Tindak Lanjut Apoteker Apoteku] Halo ${pUser.name}, Apoteker ${req.user.name} telah mencatat evaluasi terapi obat Anda.\nRencana Terapi: ${data.plan}${data.recommendation ? `\nRekomendasi: ${data.recommendation}` : ''}`;
-      await sendWhatsAppMessage({
-        phone: pUser.phone,
-        message: waMsg,
-        category: 'FOLLOW_UP',
-        userId: pUser.id,
-        patientId: req.patient.id,
-      });
-    }
+  if (data.sendViaWhatsApp && pUser?.phone) {
+    await sendWhatsAppMessage({
+      phone: pUser.phone,
+      message: pt.waFollowUp({
+        patientName: pUser.name,
+        pharmacistName: req.user.name,
+        plan: data.plan,
+        recommendation: data.recommendation,
+      }),
+      category: 'FOLLOW_UP',
+      userId: pUser.id,
+      patientId: req.patient.id,
+    });
   }
 
   emitToPatient(req.patient.id, 'followup:created', followUp);

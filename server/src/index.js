@@ -1,4 +1,7 @@
 import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -16,12 +19,15 @@ import * as messageRoutes from './routes/messages.js';
 import articleRoutes from './routes/articles.js';
 import * as questionnaireRoutes from './routes/questionnaires.js';
 import * as bloodPressureRoutes from './routes/bloodPressure.js';
+import * as healthMonitoringRoutes from './routes/healthMonitoring.js';
 import * as followUpRoutes from './routes/followUps.js';
 import serviceRoutes from './routes/services.js';
 import adminRoutes from './routes/admin.js';
 import userRoutes from './routes/users.js';
 import pushRoutes from './routes/push.js';
 import exportRoutes from './routes/export.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 initPush();
 
@@ -50,9 +56,11 @@ api.use('/patients/:patientId', medicationRoutes.patientScoped);
 api.use('/patients/:patientId', messageRoutes.patientScoped);
 api.use('/patients/:patientId', questionnaireRoutes.patientScoped);
 api.use('/patients/:patientId', bloodPressureRoutes.patientScoped);
+api.use('/patients/:patientId', healthMonitoringRoutes.patientScoped);
 api.use('/patients/:patientId', followUpRoutes.patientScoped);
 api.use(messageRoutes.flat);
 api.use(bloodPressureRoutes.flat);
+api.use(healthMonitoringRoutes.flat);
 api.use(followUpRoutes.flat);
 api.use('/services', serviceRoutes);
 api.use('/admin', adminRoutes);
@@ -65,6 +73,17 @@ api.use('/export', exportRoutes);
 api.use((req, res) => res.status(404).json({ error: 'Not found' }));
 
 app.use('/api', api);
+
+// Serve compiled PWA frontend when present (e.g. inside Docker production builds)
+const webDistDir = path.resolve(__dirname, '../../web/dist');
+if (fs.existsSync(webDistDir)) {
+  app.use(express.static(webDistDir));
+  app.get('/{*splat}', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next();
+    res.sendFile(path.join(webDistDir, 'index.html'));
+  });
+}
+
 app.use(errorHandler);
 
 const server = http.createServer(app);

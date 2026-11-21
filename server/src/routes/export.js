@@ -5,9 +5,14 @@ import { notFound } from '../errors.js';
 import { adherenceRates } from '../doses.js';
 import { formatLocal } from '../time.js';
 import { classifyBloodPressure, isControlled } from '../bloodPressure.js';
+import { logAudit } from '../audit.js';
 
 const router = Router();
 router.use(requireStaff);
+router.use((req, res, next) => {
+  logAudit(req.user, 'EXPORT_CSV', 'Export', req.path, { anonymize: req.query.anonymize === '1' }).catch(() => {});
+  next();
+});
 
 const csvCell = (v) => {
   if (v === null || v === undefined) return '';
@@ -211,6 +216,26 @@ router.get('/follow-ups.csv', async (req, res) => {
     ];
   });
   sendCsv(res, `follow-ups-${stamp()}.csv`, header, rows);
+});
+
+router.get('/health-parameters.csv', async (req, res) => {
+  const anon = req.query.anonymize === '1';
+  const records = await prisma.healthParameterLog.findMany({
+    include: { patient: { include: { user: true } } },
+    orderBy: [{ patientId: 'asc' }, { measuredAt: 'asc' }],
+  });
+  const header = [...participantHeader(anon), 'measured_local', 'parameter_type', 'value', 'unit', 'context', 'source', 'note'];
+  const rows = records.map((r) => [
+    ...participant(r.patient, anon),
+    formatLocal(r.measuredAt, r.patient.user.timezone),
+    r.type,
+    r.value,
+    r.unit,
+    r.context,
+    r.source,
+    r.note,
+  ]);
+  sendCsv(res, `health-parameters-${stamp()}.csv`, header, rows);
 });
 
 export default router;

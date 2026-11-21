@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
-import Navbar from './components/Navbar';
+import AppShell from './components/AppShell';
 import Login from './pages/Login';
 import Register from './pages/Register';
 
@@ -29,7 +29,7 @@ function ProtectedLayout() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-[#F4FAF9]">
         <div className="animate-spin w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full" />
       </div>
     );
@@ -40,12 +40,9 @@ function ProtectedLayout() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      <Navbar />
-      <main className="flex-1">
-        <Outlet />
-      </main>
-    </div>
+    <AppShell>
+      <Outlet />
+    </AppShell>
   );
 }
 
@@ -73,7 +70,6 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* Authenticated Routes with Navbar */}
       <Route element={<ProtectedLayout />}>
         {/* Patient Portal */}
         <Route path="/" element={<PatientRoute><PatientDashboard /></PatientRoute>} />

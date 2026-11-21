@@ -41,15 +41,19 @@ patientScoped.post('/messages', resolvePatient, async (req, res) => {
       tag: `chat-${req.patient.id}`,
     }).catch(() => {});
   } else {
-    const recipients = req.patient.pharmacistId
-      ? [req.patient.pharmacistId]
-      : (await prisma.user.findMany({ where: { role: { in: ['PHARMACIST', 'ADMIN'] }, active: true }, select: { id: true } })).map((u) => u.id);
-    sendPushToUsers(recipients, {
-      title: tr('id').newMessage(req.user.name),
-      body: snippet,
-      url: `/staff/patients/${req.patient.id}?tab=chat`,
-      tag: `chat-${req.patient.id}`,
-    }).catch(() => {});
+    const staffUsers = req.patient.pharmacistId
+      ? await prisma.user.findMany({ where: { id: req.patient.pharmacistId, active: true }, select: { id: true, locale: true } })
+      : await prisma.user.findMany({ where: { role: { in: ['PHARMACIST', 'ADMIN'] }, active: true }, select: { id: true, locale: true } });
+    await Promise.all(
+      staffUsers.map((su) =>
+        sendPushToUser(su.id, {
+          title: tr(su.locale).newMessage(req.user.name),
+          body: snippet,
+          url: `/staff/patients/${req.patient.id}?tab=chat`,
+          tag: `chat-${req.patient.id}`,
+        }).catch(() => {}),
+      ),
+    );
   }
   res.status(201).json({ message });
 });

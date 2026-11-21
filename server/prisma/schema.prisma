@@ -38,6 +38,12 @@ enum ServiceRequestStatus {
   CANCELLED
 }
 
+enum CheckupStatus {
+  UPCOMING
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id            String   @id @default(cuid())
   role          Role     @default(PATIENT)
@@ -108,14 +114,16 @@ model Patient {
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 
-  medications     Medication[]
-  doseLogs        DoseLog[]
-  messages        Message[]
-  responses       QuestionnaireResponse[]
-  bloodPressures  BloodPressureLog[]
-  followUps       PatientFollowUp[]
-  serviceRequests ServiceRequest[]
-  whatsappLogs    WhatsAppLog[]
+  medications      Medication[]
+  doseLogs         DoseLog[]
+  messages         Message[]
+  responses        QuestionnaireResponse[]
+  bloodPressures   BloodPressureLog[]
+  healthParameters HealthParameterLog[]
+  checkupReminders CheckupReminder[]
+  followUps        PatientFollowUp[]
+  serviceRequests  ServiceRequest[]
+  whatsappLogs     WhatsAppLog[]
 }
 
 model Medication {
@@ -176,19 +184,23 @@ model Message {
 }
 
 model Article {
-  id        String   @id @default(cuid())
-  slug      String   @unique
-  category  String
-  drugName  String?
-  titleId   String
-  titleEn   String
-  summaryId String?
-  summaryEn String?
-  bodyId    String
-  bodyEn    String
-  published Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  category      String
+  mediaType     String   @default("ARTICLE")
+  coverImage    String?
+  videoUrl      String?
+  durationLabel String?
+  drugName      String?
+  titleId       String
+  titleEn       String
+  summaryId     String?
+  summaryEn     String?
+  bodyId        String
+  bodyEn        String
+  published     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   medications Medication[]
 }
@@ -245,6 +257,42 @@ model BloodPressureLog {
   createdAt  DateTime @default(now())
 
   @@index([patientId, measuredAt])
+}
+
+model HealthParameterLog {
+  id         String   @id @default(cuid())
+  patientId  String
+  patient    Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  type       String
+  value      Float
+  unit       String
+  context    String?
+  note       String?
+  source     String   @default("SELF")
+  measuredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([patientId, type, measuredAt])
+  @@index([patientId, measuredAt])
+}
+
+model CheckupReminder {
+  id          String        @id @default(cuid())
+  patientId   String
+  patient     Patient       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  createdById String?
+  title       String
+  type        String        @default("CHECKUP")
+  scheduledAt DateTime
+  location    String?
+  notes       String?
+  status      CheckupStatus @default(UPCOMING)
+  remindedAt  DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([patientId, scheduledAt])
+  @@index([status, scheduledAt])
 }
 
 model PharmacyService {

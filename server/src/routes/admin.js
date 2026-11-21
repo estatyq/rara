@@ -371,6 +371,8 @@ router.get('/system', requireRole('ADMIN'), async (req, res) => {
     serviceRequestsCount,
     followUpsCount,
     whatsappLogsCount,
+    healthParamsCount,
+    checkupRemindersCount,
     configMap,
     recentAuditLogs,
     recentWhatsAppLogs,
@@ -389,6 +391,8 @@ router.get('/system', requireRole('ADMIN'), async (req, res) => {
     prisma.serviceRequest.count(),
     prisma.patientFollowUp.count(),
     prisma.whatsAppLog.count(),
+    prisma.healthParameterLog.count(),
+    prisma.checkupReminder.count(),
     getSystemConfigMap(),
     prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 50 }),
     prisma.whatsAppLog.findMany({
@@ -399,6 +403,13 @@ router.get('/system', requireRole('ADMIN'), async (req, res) => {
       take: 50,
     }),
   ]);
+
+  // Never leak raw external API secrets back to the browser
+  const safeConfig = {
+    ...configMap,
+    whatsapp_api_token_configured: Boolean(configMap.whatsapp_api_token),
+    whatsapp_api_token: configMap.whatsapp_api_token ? '••••••••' : '',
+  };
 
   res.json({
     database: {
@@ -411,6 +422,8 @@ router.get('/system', requireRole('ADMIN'), async (req, res) => {
         medications: medicationsCount,
         doseLogs: doseLogsCount,
         bloodPressureLogs: bpLogsCount,
+        healthParameterLogs: healthParamsCount,
+        checkupReminders: checkupRemindersCount,
         messages: messagesCount,
         articles: articlesCount,
         questionnaires: questionnairesCount,
@@ -421,24 +434,61 @@ router.get('/system', requireRole('ADMIN'), async (req, res) => {
         whatsappLogs: whatsappLogsCount,
       },
     },
-    config: configMap,
+    config: safeConfig,
     auditLogs: recentAuditLogs,
     whatsappLogs: recentWhatsAppLogs,
   });
 });
 
+const ALLOWED_CONFIG_KEYS = new Set([
+  'whatsapp_enabled',
+  'whatsapp_provider',
+  'whatsapp_api_url',
+  'whatsapp_api_token',
+  'whatsapp_sender_number',
+  'whatsapp_auto_dose_reminder',
+  'whatsapp_auto_bp_alert',
+  'platform_owner',
+]);
+
 router.put('/system/config', requireRole('ADMIN'), async (req, res) => {
   const schema = z.record(z.string(), z.string());
   const updates = schema.parse(req.body);
-  for (const [key, value] of Object.entries(updates)) {
+  const savedKeys = [];
+
+  for (const [key, rawValue] of Object.entries(updates)) {
+    if (!ALLOWED_CONFIG_KEYS.has(key)) continue;
+    const value = String(rawValue).trim();
+    // Skip masked token placeholder so existing secret isn't overwritten
+    if (key === 'whatsapp_api_token' && (!value || value === '••••••••')) continue;
+    // Basic SSRF protection for gateway URL
+    if (key === 'whatsapp_api_url' && value) {
+      let parsed;
+      try {
+        parsed = new URL(value);
+      } catch {
+        throw new HttpError(400, 'Invalid WhatsApp API URL');
+      }
+      if (parsed.protocol !== 'https:' || /^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.0\.0\.0)/.test(parsed.hostname)) {
+        throw new HttpError(400, 'WhatsApp API URL must be a public HTTPS endpoint');
+      }
+    }
     await prisma.systemConfig.upsert({
       where: { key },
-      update: { value: String(value) },
-      create: { key, value: String(value) },
+      update: { value },
+      create: { key, value },
     });
+    savedKeys.push(key);
   }
-  await logAudit(req.user, 'UPDATE_SYSTEM_CONFIG', 'SystemConfig', null, Object.keys(updates));
-  res.json({ config: await getSystemConfigMap() });
+  await logAudit(req.user, 'UPDATE_SYSTEM_CONFIG', 'SystemConfig', null, savedKeys);
+  const fresh = await getSystemConfigMap();
+  res.json({
+    config: {
+      ...fresh,
+      whatsapp_api_token_configured: Boolean(fresh.whatsapp_api_token),
+      whatsapp_api_token: fresh.whatsapp_api_token ? '••••••••' : '',
+    },
+  });
 });
 
 router.post('/whatsapp/send', requireStaff, async (req, res) => {

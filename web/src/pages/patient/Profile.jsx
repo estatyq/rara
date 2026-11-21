@@ -117,7 +117,7 @@ export default function PatientProfile() {
         const sub = await reg.pushManager.getSubscription();
         if (sub) {
           await sub.unsubscribe();
-          await api.subscribePush({ endpoint: sub.endpoint, keys: { p256dh: '', auth: '' } }).catch(() => {});
+          await api.unsubscribePush(sub.endpoint).catch(() => {});
         }
         setPushSubscribed(false);
       } else {

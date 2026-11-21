@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
-  Activity, AlertTriangle, CheckCircle2, Clock, HeartPulse, Info, Plus, ShieldAlert,
+  Activity, AlertTriangle, CalendarClock, CheckCircle2, Clock, Droplet,
+  Heart, HeartPulse, Info, Plus, ShieldAlert, Sparkles, Trash2, Check
 } from 'lucide-react';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
@@ -8,78 +10,64 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import { useSocket } from '../../context/SocketContext';
 import { dateTimeInputInZone, localDateTimeToISO } from '../../utils/date';
 
-const copy = {
+const bpCopy = {
   id: {
-    title: 'Tekanan Darah',
-    subtitle: 'Catat hasil pengukuran secara rutin agar tim apoteker dapat memantau perubahan tekanan darah Anda.',
-    latest: 'Pengukuran terakhir',
+    latest: 'Terakhir',
     average: 'Rata-rata',
     control: 'Terkontrol',
-    controlHint: 'Pengukuran <140/90 mmHg',
-    formTitle: 'Tambah pengukuran',
-    formHint: 'Duduk tenang selama 5 menit sebelum mengukur. Gunakan lengan yang sama.',
-    systolic: 'Sistolik (mmHg)',
-    diastolic: 'Diastolik (mmHg)',
+    controlHint: '<140/90 mmHg',
+    formHint: 'Duduk tenang 5 menit sebelum mengukur. Gunakan lengan yang sama.',
+    systolic: 'Sistolik',
+    diastolic: 'Diastolik',
     pulse: 'Denyut nadi (opsional)',
-    measuredAt: 'Tanggal & waktu ukur',
-    note: 'Catatan (opsional)',
-    save: 'Simpan pengukuran',
-    saving: 'Menyimpan...',
-    history: 'Riwayat pengukuran',
-    empty: 'Belum ada pengukuran pada periode ini.',
-    trend: 'Tren 14 pengukuran terakhir',
-    range: '30 hari',
+    measuredAt: 'Tanggal & waktu',
+    note: 'Catatan / keluhan (opsional)',
+    empty: 'Belum ada pengukuran tekanan darah.',
+    trend: 'Grafik Riwayat Tekanan Darah',
     normal: 'Normal',
     elevated: 'Sedikit tinggi',
     high: 'Tinggi',
-    critical: 'Sangat tinggi',
+    critical: 'Kritis',
     low: 'Rendah',
     sourceSelf: 'Mandiri',
     sourceClinic: 'Klinik',
-    criticalTitle: 'Tekanan darah sangat tinggi',
-    criticalText: 'Segera hubungi tenaga kesehatan atau fasilitas kesehatan terdekat. Jangan menunggu sampai keluhan memburuk.',
-    highTitle: 'Tekanan darah perlu ditinjau',
-    highText: 'Hubungi dokter atau apoteker untuk evaluasi. Segera cari bantuan jika disertai sakit kepala berat, gangguan penglihatan, nyeri perut, atau sesak napas.',
+    criticalTitle: 'Tekanan darah sangat tinggi (Kritis)',
+    criticalText: 'Segera hubungi fasilitas kesehatan terdekat atau apoteker Anda. Jangan menunggu bila disertai sakit kepala berat atau pandangan kabur.',
+    highTitle: 'Tekanan darah tinggi — perlu ditinjau',
+    highText: 'Istirahat tenang, ukur ulang 15 menit lagi, dan konsultasikan dengan dokter atau apoteker Anda.',
     lowTitle: 'Tekanan darah rendah',
-    lowText: 'Istirahat dan hubungi tenaga kesehatan jika Anda merasa pusing berat, lemas, atau nyaris pingsan.',
-    safety: 'Catatan ini membantu pemantauan dan bukan pengganti pemeriksaan dokter.',
+    lowText: 'Istirahat dan hubungi tenaga kesehatan bila merasa pusing berat atau lemas.',
+    safety: 'Catatan ini membantu pemantauan bersama apoteker dan bukan pengganti pemeriksaan dokter.',
     error: 'Pengukuran belum dapat disimpan.',
   },
   en: {
-    title: 'Blood Pressure',
-    subtitle: 'Record regular measurements so your pharmacist can follow changes in your blood pressure.',
-    latest: 'Latest reading',
+    latest: 'Latest',
     average: 'Average',
     control: 'Controlled',
-    controlHint: 'Readings below 140/90 mmHg',
-    formTitle: 'Add a measurement',
-    formHint: 'Rest quietly for 5 minutes before measuring. Use the same arm each time.',
-    systolic: 'Systolic (mmHg)',
-    diastolic: 'Diastolic (mmHg)',
+    controlHint: '<140/90 mmHg',
+    formHint: 'Rest quietly for 5 minutes before measuring. Use the same arm consistently.',
+    systolic: 'Systolic',
+    diastolic: 'Diastolic',
     pulse: 'Pulse (optional)',
     measuredAt: 'Date & time',
-    note: 'Note (optional)',
-    save: 'Save reading',
-    saving: 'Saving...',
-    history: 'Measurement history',
-    empty: 'No readings in this period.',
-    trend: 'Last 14 readings',
-    range: '30 days',
+    note: 'Note / symptoms (optional)',
+    empty: 'No blood pressure readings yet.',
+    trend: 'Blood Pressure Progress Chart',
     normal: 'Normal',
     elevated: 'Elevated',
     high: 'High',
-    critical: 'Very high',
+    critical: 'Critical',
     low: 'Low',
     sourceSelf: 'Self',
     sourceClinic: 'Clinic',
-    criticalTitle: 'Very high blood pressure',
-    criticalText: 'Contact a healthcare professional or the nearest health facility now. Do not wait for symptoms to worsen.',
-    highTitle: 'Blood pressure needs review',
-    highText: 'Contact your doctor or pharmacist. Seek help immediately with a severe headache, vision changes, abdominal pain, or shortness of breath.',
+    criticalTitle: 'Very high blood pressure (Critical)',
+    criticalText: 'Contact a healthcare facility or clinical pharmacist immediately. Do not wait if accompanied by severe headache or vision changes.',
+    highTitle: 'Elevated / high blood pressure',
+    highText: 'Rest quietly, re-measure in 15 minutes, and consult your doctor or pharmacist.',
     lowTitle: 'Low blood pressure',
-    lowText: 'Rest and contact a healthcare professional if you feel very dizzy, weak, or close to fainting.',
-    safety: 'This record supports monitoring and does not replace assessment by a healthcare professional.',
-    error: 'The reading could not be saved.',
+    lowText: 'Rest and contact a clinician if you feel dizzy, weak, or faint.',
+    safety: 'This log supports clinical monitoring and does not replace medical diagnosis.',
+    error: 'Unable to save reading.',
   },
 };
 
@@ -91,363 +79,912 @@ const categoryStyle = {
   LOW: 'bg-sky-50 text-sky-700 border-sky-200',
 };
 
-function PressureChart({ logs, text, timeZone }) {
+const PARAM_DEFAULTS = {
+  WEIGHT: { unit: 'kg', placeholder: '64.5' },
+  HEART_RATE: { unit: 'bpm', placeholder: '78' },
+  SPO2: { unit: '%', placeholder: '98' },
+  TEMPERATURE: { unit: '°C', placeholder: '36.6' },
+  FETAL_MOVEMENT: { unit: 'kicks/2h', placeholder: '12' },
+  EDEMA: { unit: 'grade', placeholder: '1' },
+  URINE_PROTEIN: { unit: '+', placeholder: '0' },
+};
+
+function PressureChart({ logs, title, timeZone, dateLocale }) {
   const points = [...logs].sort((a, b) => +new Date(a.measuredAt) - +new Date(b.measuredAt)).slice(-14);
   if (points.length < 2) return null;
 
-  const width = 660;
-  const height = 210;
-  const pad = { top: 18, right: 18, bottom: 28, left: 40 };
+  const width = 640;
+  const height = 190;
+  const pad = { top: 16, right: 16, bottom: 26, left: 38 };
   const plotW = width - pad.left - pad.right;
   const plotH = height - pad.top - pad.bottom;
   const minY = 50;
   const maxY = 180;
-  const x = (index) => pad.left + (plotW * index) / Math.max(points.length - 1, 1);
-  const y = (value) => pad.top + ((maxY - value) / (maxY - minY)) * plotH;
-  const path = (key) => points.map((point, index) => `${index ? 'L' : 'M'} ${x(index)} ${y(point[key])}`).join(' ');
+  const x = (i) => pad.left + (plotW * i) / Math.max(points.length - 1, 1);
+  const y = (v) => pad.top + ((maxY - Math.min(maxY, Math.max(minY, v))) / (maxY - minY)) * plotH;
+  const path = (key) => points.map((p, i) => `${i ? 'L' : 'M'} ${x(i)} ${y(p[key])}`).join(' ');
 
   return (
     <div className="overflow-x-auto">
-      <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[560px] w-full" role="img" aria-label={text.trend}>
+      <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[460px] w-full" role="img" aria-label={title}>
         {[60, 90, 120, 150, 180].map((tick) => (
           <g key={tick}>
             <line x1={pad.left} y1={y(tick)} x2={width - pad.right} y2={y(tick)} stroke="#e2e8f0" strokeWidth="1" />
-            <text x={pad.left - 9} y={y(tick) + 4} textAnchor="end" fontSize="10" fill="#64748b">{tick}</text>
+            <text x={pad.left - 8} y={y(tick) + 4} textAnchor="end" fontSize="10" fill="#64748b">{tick}</text>
           </g>
         ))}
-        <line x1={pad.left} y1={y(140)} x2={width - pad.right} y2={y(140)} stroke="#fb923c" strokeDasharray="6 5" strokeWidth="1.5" />
-        <line x1={pad.left} y1={y(90)} x2={width - pad.right} y2={y(90)} stroke="#38bdf8" strokeDasharray="6 5" strokeWidth="1.5" />
-        <path d={path('systolic')} fill="none" stroke="#dc2626" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        <path d={path('diastolic')} fill="none" stroke="#0f766e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        {points.map((point, index) => (
-          <g key={point.id}>
-            <circle cx={x(index)} cy={y(point.systolic)} r="4" fill="#fff" stroke="#dc2626" strokeWidth="2.5" />
-            <circle cx={x(index)} cy={y(point.diastolic)} r="4" fill="#fff" stroke="#0f766e" strokeWidth="2.5" />
-            <text x={x(index)} y={height - 8} textAnchor="middle" fontSize="9" fill="#64748b">
-              {new Intl.DateTimeFormat(undefined, { timeZone, day: '2-digit', month: 'short' }).format(new Date(point.measuredAt))}
-            </text>
+        <line x1={pad.left} y1={y(140)} x2={width - pad.right} y2={y(140)} stroke="#fb923c" strokeDasharray="5 4" strokeWidth="1.3" />
+        <line x1={pad.left} y1={y(90)} x2={width - pad.right} y2={y(90)} stroke="#38bdf8" strokeDasharray="5 4" strokeWidth="1.3" />
+        <path d={path('systolic')} fill="none" stroke="#0d9488" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        <path d={path('diastolic')} fill="none" stroke="#0284c7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        {points.map((p, i) => (
+          <g key={p.id}>
+            <circle cx={x(i)} cy={y(p.systolic)} r="4" fill="#0d9488" stroke="#fff" strokeWidth="1.5" />
+            <circle cx={x(i)} cy={y(p.diastolic)} r="3.5" fill="#0284c7" stroke="#fff" strokeWidth="1.5" />
+            {(i === 0 || i === points.length - 1 || i % 2 === 0) && (
+              <text x={x(i)} y={height - 6} textAnchor="middle" fontSize="9.5" fill="#64748b">
+                {new Intl.DateTimeFormat(dateLocale, { day: '2-digit', month: '2-digit', timeZone }).format(new Date(p.measuredAt))}
+              </text>
+            )}
           </g>
         ))}
       </svg>
-      <div className="flex items-center justify-center gap-5 text-[11px] font-semibold text-slate-600 -mt-1">
-        <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-rose-600 rounded" />{text.systolic.replace(' (mmHg)', '')}</span>
-        <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-teal-700 rounded" />{text.diastolic.replace(' (mmHg)', '')}</span>
-      </div>
     </div>
   );
 }
 
-export default function BloodPressure() {
+function ParamMiniChart({ logs, unit, timeZone, dateLocale }) {
+  const points = [...logs].sort((a, b) => +new Date(a.measuredAt) - +new Date(b.measuredAt)).slice(-12);
+  if (points.length < 2) return null;
+  const vals = points.map((p) => p.value);
+  const minVal = Math.min(...vals);
+  const maxVal = Math.max(...vals);
+  const span = Math.max(maxVal - minVal, 1);
+  const minY = minVal - span * 0.2;
+  const maxY = maxVal + span * 0.2;
+
+  const width = 560;
+  const height = 160;
+  const pad = { top: 16, right: 20, bottom: 26, left: 44 };
+  const plotW = width - pad.left - pad.right;
+  const plotH = height - pad.top - pad.bottom;
+  const x = (i) => pad.left + (plotW * i) / Math.max(points.length - 1, 1);
+  const y = (v) => pad.top + ((maxY - v) / (maxY - minY)) * plotH;
+  const line = points.map((p, i) => `${i ? 'L' : 'M'} ${x(i)} ${y(p.value)}`).join(' ');
+
+  return (
+    <div className="overflow-x-auto">
+      <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[420px] w-full">
+        {[minVal, (minVal + maxVal) / 2, maxVal].map((tick, idx) => (
+          <g key={idx}>
+            <line x1={pad.left} y1={y(tick)} x2={width - pad.right} y2={y(tick)} stroke="#e2e8f0" strokeWidth="1" />
+            <text x={pad.left - 8} y={y(tick) + 4} textAnchor="end" fontSize="10" fill="#64748b">
+              {tick.toFixed(1)}
+            </text>
+          </g>
+        ))}
+        <path d={line} fill="none" stroke="#0d9488" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        {points.map((p, i) => (
+          <g key={p.id}>
+            <circle cx={x(i)} cy={y(p.value)} r="4" fill="#0d9488" stroke="#fff" strokeWidth="1.5" />
+            <text x={x(i)} y={height - 6} textAnchor="middle" fontSize="9.5" fill="#64748b">
+              {new Intl.DateTimeFormat(dateLocale, { day: '2-digit', month: '2-digit', timeZone }).format(new Date(p.measuredAt))}
+            </text>
+          </g>
+        ))}
+        <text x={width - pad.right} y={12} textAnchor="end" fontSize="10" fill="#0f766e" fontWeight="bold">
+          {unit}
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+export default function PatientBloodPressure() {
   const { user } = useAuth();
-  const { lang } = useLanguage();
+  const { lang, t, dateLocale } = useLanguage();
   const { socket } = useSocket();
-  const text = copy[lang] || copy.id;
-  const [logs, setLogs] = useState([]);
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-  const [form, setForm] = useState({
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const tz = user.timezone || 'Asia/Jakarta';
+  const text = bpCopy[lang] || bpCopy.id;
+  const activeTab = searchParams.get('tab') || 'bp';
+
+  const setTab = (tab) => {
+    setSearchParams(tab === 'bp' ? {} : { tab });
+  };
+
+  // BP State
+  const [bpLogs, setBpLogs] = useState([]);
+  const [bpSummary, setBpSummary] = useState(null);
+  const [bpForm, setBpForm] = useState({
     systolic: '',
     diastolic: '',
     pulse: '',
-    measuredAt: dateTimeInputInZone(new Date(), user.timezone),
+    measuredAt: dateTimeInputInZone(new Date(), tz),
     note: '',
   });
+  const [savingBp, setSavingBp] = useState(false);
+  const [bpError, setBpError] = useState('');
 
-  const load = useCallback(async () => {
+  // Other Health Params State
+  const [paramLogs, setParamLogs] = useState([]);
+  const [selectedParamType, setSelectedParamType] = useState('WEIGHT');
+  const [paramForm, setParamForm] = useState({
+    type: 'WEIGHT',
+    value: '',
+    note: '',
+    measuredAt: dateTimeInputInZone(new Date(), tz),
+  });
+  const [savingParam, setSavingParam] = useState(false);
+
+  // Check-Up Reminders State
+  const [checkups, setCheckups] = useState([]);
+  const [checkupForm, setCheckupForm] = useState({
+    title: '',
+    type: 'CHECKUP',
+    scheduledAt: dateTimeInputInZone(new Date(Date.now() + 3 * 86400000), tz),
+    location: '',
+    notes: '',
+  });
+  const [savingCheckup, setSavingCheckup] = useState(false);
+
+  const [loading, setLoading] = useState(true);
+
+  const loadAll = useCallback(async () => {
     try {
-      const data = await api.getBloodPressures('me', 30, 60);
-      setLogs(data.logs || []);
-      setSummary(data.summary);
-      setError('');
+      const [bpRes, hpRes, ckRes] = await Promise.all([
+        api.getBloodPressures('me', 30, 60),
+        api.getHealthParameters('me', { days: 90 }).catch(() => ({ logs: [] })),
+        api.getCheckups('me').catch(() => ({ reminders: [] })),
+      ]);
+      setBpLogs(bpRes.logs || []);
+      setBpSummary(bpRes.summary || null);
+      setParamLogs(hpRes.logs || []);
+      setCheckups(ckRes.reminders || []);
     } catch (err) {
-      setError(err.message || text.error);
+      console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [text.error]);
+  }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    loadAll();
+  }, [loadAll]);
 
   useEffect(() => {
     if (!socket) return;
-    const onChange = () => load();
-    socket.on('blood-pressure:changed', onChange);
-    return () => socket.off('blood-pressure:changed', onChange);
-  }, [socket, load]);
+    socket.on('blood-pressure:changed', loadAll);
+    socket.on('health-parameter:changed', loadAll);
+    socket.on('checkup:changed', loadAll);
+    return () => {
+      socket.off('blood-pressure:changed', loadAll);
+      socket.off('health-parameter:changed', loadAll);
+      socket.off('checkup:changed', loadAll);
+    };
+  }, [socket, loadAll]);
 
-  const latest = summary?.latest;
-  const alert = useMemo(() => {
-    if (!latest) return null;
-    if (latest.category === 'CRITICAL') return { title: text.criticalTitle, message: text.criticalText, tone: 'critical' };
-    if (latest.category === 'HIGH') return { title: text.highTitle, message: text.highText, tone: 'high' };
-    if (latest.category === 'LOW') return { title: text.lowTitle, message: text.lowText, tone: 'low' };
-    return null;
-  }, [latest, text]);
-
-  const submit = async (event) => {
-    event.preventDefault();
-    setError('');
-    setSaving(true);
+  const handleSaveBp = async (e) => {
+    e.preventDefault();
+    setBpError('');
+    setSavingBp(true);
     try {
       await api.recordBloodPressure('me', {
-        systolic: Number(form.systolic),
-        diastolic: Number(form.diastolic),
-        pulse: form.pulse ? Number(form.pulse) : undefined,
-        measuredAt: localDateTimeToISO(form.measuredAt, user.timezone),
-        note: form.note || undefined,
+        systolic: Number(bpForm.systolic),
+        diastolic: Number(bpForm.diastolic),
+        pulse: bpForm.pulse ? Number(bpForm.pulse) : null,
+        measuredAt: bpForm.measuredAt ? localDateTimeToISO(bpForm.measuredAt, tz) : undefined,
+        note: bpForm.note.trim() || null,
       });
-      setForm({
+      setBpForm({
         systolic: '',
         diastolic: '',
         pulse: '',
-        measuredAt: dateTimeInputInZone(new Date(), user.timezone),
+        measuredAt: dateTimeInputInZone(new Date(), tz),
         note: '',
       });
-      await load();
+      await loadAll();
     } catch (err) {
-      setError(err.message || text.error);
+      setBpError(err.message || text.error);
     } finally {
-      setSaving(false);
+      setSavingBp(false);
     }
   };
 
-  const label = (category) => text[category.toLowerCase()] || category;
+  const handleSaveParam = async (e) => {
+    e.preventDefault();
+    if (!paramForm.value) return;
+    setSavingParam(true);
+    try {
+      await api.recordHealthParameter('me', {
+        type: paramForm.type,
+        value: Number(paramForm.value),
+        unit: PARAM_DEFAULTS[paramForm.type]?.unit || '',
+        note: paramForm.note.trim() || null,
+        measuredAt: paramForm.measuredAt ? localDateTimeToISO(paramForm.measuredAt, tz) : undefined,
+      });
+      setSelectedParamType(paramForm.type);
+      setParamForm((prev) => ({
+        ...prev,
+        value: '',
+        note: '',
+        measuredAt: dateTimeInputInZone(new Date(), tz),
+      }));
+      await loadAll();
+    } catch (err) {
+      alert(err.message || text.error);
+    } finally {
+      setSavingParam(false);
+    }
+  };
+
+  const handleCreateCheckup = async (e) => {
+    e.preventDefault();
+    if (!checkupForm.title.trim()) return;
+    setSavingCheckup(true);
+    try {
+      await api.createCheckup('me', {
+        title: checkupForm.title.trim(),
+        type: checkupForm.type,
+        scheduledAt: localDateTimeToISO(checkupForm.scheduledAt, tz),
+        location: checkupForm.location.trim() || null,
+        notes: checkupForm.notes.trim() || null,
+      });
+      setCheckupForm({
+        title: '',
+        type: 'CHECKUP',
+        scheduledAt: dateTimeInputInZone(new Date(Date.now() + 7 * 86400000), tz),
+        location: '',
+        notes: '',
+      });
+      await loadAll();
+    } catch (err) {
+      alert(err.message || text.error);
+    } finally {
+      setSavingCheckup(false);
+    }
+  };
+
+  const handleCompleteCheckup = async (id) => {
+    await api.updateCheckup(id, { status: 'COMPLETED' });
+    await loadAll();
+  };
+
+  const handleDeleteCheckup = async (id) => {
+    await api.deleteCheckup(id);
+    await loadAll();
+  };
+
+  const latestBp = bpSummary?.latest;
+  const filteredParams = paramLogs.filter((p) => p.type === selectedParamType);
+
+  const tabs = [
+    { id: 'bp', label: t.health.tabBp, icon: HeartPulse },
+    { id: 'glucose', label: t.health.tabGlucose, icon: Droplet, badge: 'Soon' },
+    { id: 'params', label: t.health.tabParams, icon: Activity },
+    { id: 'checkups', label: t.health.tabCheckups, icon: CalendarClock, count: checkups.filter((c) => c.status === 'UPCOMING').length },
+  ];
+
+  const formatDate = (iso) =>
+    new Intl.DateTimeFormat(dateLocale, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: tz,
+    }).format(new Date(iso));
 
   if (loading) {
-    return <div className="py-20 text-center text-slate-500">Memuat data tekanan darah...</div>;
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-14 text-center text-slate-500">
+        <div className="animate-spin w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full mx-auto mb-3" />
+        {t.common.loading}
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 pb-24 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
       <div>
-        <div className="flex items-center gap-2 text-teal-700 text-xs font-bold uppercase tracking-[0.16em]">
-          <Activity className="w-4 h-4" /> {text.range}
-        </div>
-        <h1 className="mt-1 text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">{text.title}</h1>
-        <p className="mt-1 text-sm text-slate-500 max-w-2xl">{text.subtitle}</p>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          {t.health.pageTitle}
+        </h1>
+        <p className="text-sm text-slate-500 mt-1">{t.health.pageSubtitle}</p>
       </div>
 
-      {alert && (
-        <div className={`rounded-2xl border p-4 flex items-start gap-3 ${
-          alert.tone === 'critical'
-            ? 'bg-rose-50 border-rose-200 text-rose-900'
-            : alert.tone === 'low'
-              ? 'bg-sky-50 border-sky-200 text-sky-900'
-              : 'bg-orange-50 border-orange-200 text-orange-900'
-        }`}>
-          <ShieldAlert className="w-5 h-5 shrink-0 mt-0.5" />
-          <div>
-            <p className="font-bold text-sm">{alert.title}</p>
-            <p className="text-xs mt-1 leading-relaxed">{alert.message}</p>
+      {/* Section B Feature Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const active = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setTab(tab.id)}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold whitespace-nowrap border transition ${
+                active
+                  ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                  : 'bg-white text-slate-600 border-teal-100 hover:bg-teal-50 hover:text-teal-800'
+              }`}
+            >
+              <Icon className="w-4 h-4 shrink-0" />
+              <span>{tab.label}</span>
+              {tab.badge && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${active ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800'}`}>
+                  {tab.badge}
+                </span>
+              )}
+              {tab.count > 0 && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${active ? 'bg-white/25 text-white' : 'bg-teal-100 text-teal-800'}`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ================= TAB 1: BLOOD PRESSURE (DoseMate Screen 4) ================= */}
+      {activeTab === 'bp' && (
+        <div className="space-y-6">
+          {/* Safety Triage Banner */}
+          {latestBp?.category === 'CRITICAL' && (
+            <div className="rounded-3xl bg-rose-50 border border-rose-200 p-4 flex items-start gap-3 text-rose-900">
+              <ShieldAlert className="w-6 h-6 text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-extrabold text-sm">{text.criticalTitle}</h3>
+                <p className="text-xs mt-1 leading-relaxed">{text.criticalText}</p>
+              </div>
+            </div>
+          )}
+          {latestBp?.category === 'HIGH' && (
+            <div className="rounded-3xl bg-orange-50 border border-orange-200 p-4 flex items-start gap-3 text-orange-900">
+              <AlertTriangle className="w-6 h-6 text-orange-600 shrink-0 mt-0.5" />
+              <div>
+                <h3 className="font-extrabold text-sm">{text.highTitle}</h3>
+                <p className="text-xs mt-1 leading-relaxed">{text.highText}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Friendly DoseMate Screen 4 Input Card */}
+            <form
+              onSubmit={handleSaveBp}
+              className="lg:col-span-5 bg-white rounded-3xl p-6 border border-teal-100 shadow-sm space-y-5"
+            >
+              <div className="text-center">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mb-3">
+                  <HeartPulse className="w-8 h-8" />
+                </div>
+                <h2 className="text-base font-extrabold text-slate-900">{t.health.bpPrompt}</h2>
+                <p className="text-xs text-slate-500 mt-1">{text.formHint}</p>
+              </div>
+
+              {bpError && (
+                <div className="rounded-2xl bg-rose-50 border border-rose-200 px-3.5 py-2.5 text-xs font-semibold text-rose-700">
+                  {bpError}
+                </div>
+              )}
+
+              {/* Big Pill Input: Systolic */}
+              <div className="rounded-2xl bg-[#EEF6FD] border border-sky-100 px-4 py-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-9 h-9 rounded-full bg-white text-sky-600 flex items-center justify-center shadow-xs shrink-0">
+                    <Droplet className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-sky-700">
+                      {text.systolic}
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="60"
+                      max="260"
+                      placeholder="120"
+                      value={bpForm.systolic}
+                      onChange={(e) => setBpForm((p) => ({ ...p, systolic: e.target.value }))}
+                      className="w-full bg-transparent text-2xl font-extrabold text-slate-900 placeholder-slate-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-slate-500 shrink-0">mmHg</span>
+              </div>
+
+              {/* Big Pill Input: Diastolic */}
+              <div className="rounded-2xl bg-[#FEF2F2] border border-rose-100 px-4 py-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-9 h-9 rounded-full bg-white text-rose-500 flex items-center justify-center shadow-xs shrink-0">
+                    <Heart className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-rose-700">
+                      {text.diastolic}
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="30"
+                      max="160"
+                      placeholder="80"
+                      value={bpForm.diastolic}
+                      onChange={(e) => setBpForm((p) => ({ ...p, diastolic: e.target.value }))}
+                      className="w-full bg-transparent text-2xl font-extrabold text-slate-900 placeholder-slate-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <span className="text-xs font-bold text-slate-500 shrink-0">mmHg</span>
+              </div>
+
+              {/* Optional Pulse, Time, Note */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{text.pulse}</label>
+                  <input
+                    type="number"
+                    min="30"
+                    max="220"
+                    placeholder="76"
+                    value={bpForm.pulse}
+                    onChange={(e) => setBpForm((p) => ({ ...p, pulse: e.target.value }))}
+                    className="w-full px-3.5 py-2 rounded-xl bg-[#F6FBFA] border border-teal-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">{text.measuredAt}</label>
+                  <input
+                    type="datetime-local"
+                    value={bpForm.measuredAt}
+                    onChange={(e) => setBpForm((p) => ({ ...p, measuredAt: e.target.value }))}
+                    className="w-full px-3 py-2 rounded-xl bg-[#F6FBFA] border border-teal-100 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">{text.note}</label>
+                <input
+                  type="text"
+                  value={bpForm.note}
+                  onChange={(e) => setBpForm((p) => ({ ...p, note: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#F6FBFA] border border-teal-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={savingBp}
+                className="w-full py-3.5 px-5 rounded-full bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-md shadow-teal-600/20 transition disabled:opacity-50"
+              >
+                {savingBp ? t.common.saving : t.health.bpSave}
+              </button>
+
+              <p className="text-[11px] text-slate-400 flex items-start gap-1.5 leading-relaxed">
+                <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-teal-500" />
+                <span>{text.safety}</span>
+              </p>
+            </form>
+
+            {/* Right: Summary KPIs, Progress Chart, History */}
+            <div className="lg:col-span-7 space-y-5">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white rounded-2xl p-4 border border-teal-100/80 shadow-xs">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase">{text.latest}</span>
+                  <div className="text-xl font-extrabold text-slate-900 mt-1">
+                    {latestBp ? `${latestBp.systolic}/${latestBp.diastolic}` : '—'}
+                  </div>
+                  {latestBp && (
+                    <span className={`inline-block mt-1.5 text-[10px] font-bold px-2 py-0.5 rounded-full border ${categoryStyle[latestBp.category]}`}>
+                      {text[latestBp.category.toLowerCase()] || latestBp.category}
+                    </span>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-2xl p-4 border border-teal-100/80 shadow-xs">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase">{text.average}</span>
+                  <div className="text-xl font-extrabold text-teal-700 mt-1">
+                    {bpSummary?.average ? `${bpSummary.average.systolic}/${bpSummary.average.diastolic}` : '—'}
+                  </div>
+                  <span className="text-[10px] text-slate-400">mmHg</span>
+                </div>
+
+                <div className="bg-white rounded-2xl p-4 border border-teal-100/80 shadow-xs">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase">{text.control}</span>
+                  <div className="text-xl font-extrabold text-emerald-600 mt-1">
+                    {bpSummary?.controlRate !== null && bpSummary?.controlRate !== undefined ? `${bpSummary.controlRate}%` : '—'}
+                  </div>
+                  <span className="text-[10px] text-slate-400">{text.controlHint}</span>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-3xl p-5 border border-teal-100/80 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-extrabold text-slate-900">{text.trend}</h3>
+                  <div className="flex items-center gap-3 text-[11px] font-semibold">
+                    <span className="flex items-center gap-1 text-teal-700"><span className="w-2.5 h-2.5 rounded-full bg-teal-600" /> {text.systolic}</span>
+                    <span className="flex items-center gap-1 text-sky-700"><span className="w-2.5 h-2.5 rounded-full bg-sky-600" /> {text.diastolic}</span>
+                  </div>
+                </div>
+                {bpLogs.length >= 2 ? (
+                  <PressureChart logs={bpLogs} title={text.trend} timeZone={tz} dateLocale={dateLocale} />
+                ) : (
+                  <p className="text-xs text-slate-400 py-6 text-center">{text.empty}</p>
+                )}
+              </div>
+
+              <div className="bg-white rounded-3xl p-5 border border-teal-100/80 shadow-sm">
+                <h3 className="text-sm font-extrabold text-slate-900 mb-3">{t.health.bpHistory}</h3>
+                {bpLogs.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-4 text-center">{text.empty}</p>
+                ) : (
+                  <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto pr-1">
+                    {bpLogs.map((log) => (
+                      <div key={log.id} className="py-3 flex items-center justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-slate-900 text-sm">
+                              {log.systolic}/{log.diastolic} mmHg
+                            </span>
+                            {log.pulse && <span className="text-xs text-slate-500">• {log.pulse} bpm</span>}
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${categoryStyle[log.category]}`}>
+                              {text[log.category.toLowerCase()] || log.category}
+                            </span>
+                          </div>
+                          {log.note && <p className="text-xs text-slate-500 mt-0.5">{log.note}</p>}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {formatDate(log.measuredAt)}
+                          </div>
+                          <span className="text-[10px] text-slate-400">
+                            {log.source === 'CLINIC' ? text.sourceClinic : text.sourceSelf}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{text.latest}</span>
-            <HeartPulse className="w-5 h-5 text-rose-500" />
+      {/* ================= TAB 2: BLOOD GLUCOSE (UNDER DEVELOPMENT) ================= */}
+      {activeTab === 'glucose' && (
+        <div className="bg-white rounded-3xl p-8 sm:p-10 border border-teal-100 shadow-sm max-w-3xl mx-auto text-center space-y-5">
+          <div className="w-16 h-16 mx-auto rounded-3xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center">
+            <Droplet className="w-8 h-8" />
           </div>
-          <div className="mt-3 flex items-end gap-2">
-            <span className="text-3xl font-extrabold text-slate-900">{latest ? latest.systolic : '—'}</span>
-            <span className="text-2xl font-bold text-slate-300 pb-0.5">/</span>
-            <span className="text-3xl font-extrabold text-slate-900">{latest ? latest.diastolic : '—'}</span>
-            <span className="text-xs text-slate-500 pb-1.5">mmHg</span>
-          </div>
-          {latest && (
-            <div className="mt-3 flex items-center justify-between gap-2">
-              <span className={`text-[11px] font-bold border rounded-full px-2.5 py-1 ${categoryStyle[latest.category]}`}>
-                {label(latest.category)}
-              </span>
-              <span className="text-[11px] text-slate-400">
-                {new Intl.DateTimeFormat(lang === 'id' ? 'id-ID' : 'en-US', {
-                  timeZone: user.timezone,
-                  day: '2-digit',
-                  month: 'short',
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }).format(new Date(latest.measuredAt))}
-              </span>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{text.average}</span>
-          <div className="mt-3 text-3xl font-extrabold text-slate-900">
-            {summary?.average ? `${summary.average.systolic}/${summary.average.diastolic}` : '—'}
-            <span className="text-xs font-medium text-slate-400 ml-2">mmHg</span>
-          </div>
-          <p className="mt-3 text-xs text-slate-500">{summary?.count || 0} {text.range}</p>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{text.control}</span>
-          <div className="mt-3 flex items-center gap-2">
-            <span className="text-3xl font-extrabold text-teal-700">
-              {summary?.controlRate == null ? '—' : `${summary.controlRate}%`}
-            </span>
-            {summary?.controlRate >= 80 && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
-          </div>
-          <p className="mt-3 text-xs text-slate-500">{text.controlHint}</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <form onSubmit={submit} className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 space-y-4">
           <div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-teal-50 text-teal-700 flex items-center justify-center">
-                <Plus className="w-4 h-4" />
-              </div>
-              <h2 className="font-bold text-slate-900">{text.formTitle}</h2>
-            </div>
-            <p className="text-xs text-slate-500 mt-2 leading-relaxed">{text.formHint}</p>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-extrabold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5" />
+              {t.health.glucoseBadge}
+            </span>
+            <h2 className="text-2xl font-extrabold text-slate-900 mt-3">{t.health.glucoseTitle}</h2>
+            <p className="text-sm text-slate-600 mt-2 max-w-xl mx-auto leading-relaxed">
+              {t.health.glucoseDesc}
+            </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">{text.systolic}</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min="60"
-                max="260"
-                required
-                value={form.systolic}
-                onChange={(event) => setForm({ ...form, systolic: event.target.value })}
-                className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-lg font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
-              />
-            </label>
-            <label className="block">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">{text.diastolic}</span>
-              <input
-                type="number"
-                inputMode="numeric"
-                min="30"
-                max="160"
-                required
-                value={form.diastolic}
-                onChange={(event) => setForm({ ...form, diastolic: event.target.value })}
-                className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-lg font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
-              />
-            </label>
+          <div className="bg-[#F4FAF9] rounded-2xl p-5 border border-teal-100 text-left max-w-lg mx-auto">
+            <h3 className="text-xs font-extrabold uppercase tracking-wider text-teal-800 mb-3">
+              {t.health.glucosePlannedTitle}
+            </h3>
+            <ul className="space-y-2.5">
+              {t.health.glucoseItems.map((item, idx) => (
+                <li key={idx} className="flex items-start gap-2.5 text-xs font-medium text-slate-700">
+                  <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
           </div>
+        </div>
+      )}
 
-          <label className="block">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">{text.pulse}</span>
-            <input
-              type="number"
-              inputMode="numeric"
-              min="30"
-              max="220"
-              value={form.pulse}
-              onChange={(event) => setForm({ ...form, pulse: event.target.value })}
-              className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">{text.measuredAt}</span>
-            <input
-              type="datetime-local"
-              required
-              value={form.measuredAt}
-              onChange={(event) => setForm({ ...form, measuredAt: event.target.value })}
-              className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">{text.note}</span>
-            <textarea
-              rows="2"
-              maxLength="500"
-              value={form.note}
-              onChange={(event) => setForm({ ...form, note: event.target.value })}
-              className="mt-1 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
-          </label>
-
-          {error && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-700 flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" /> {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={saving}
-            className="w-full rounded-xl bg-teal-600 hover:bg-teal-700 px-4 py-3 text-sm font-bold text-white shadow-sm transition disabled:opacity-50"
+      {/* ================= TAB 3: OTHER RELEVANT HEALTH PARAMETERS ================= */}
+      {activeTab === 'params' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <form
+            onSubmit={handleSaveParam}
+            className="lg:col-span-5 bg-white rounded-3xl p-6 border border-teal-100 shadow-sm space-y-4"
           >
-            {saving ? text.saving : text.save}
-          </button>
-
-          <p className="text-[11px] leading-relaxed text-slate-400 flex items-start gap-1.5">
-            <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" /> {text.safety}
-          </p>
-        </form>
-
-        <div className="lg:col-span-3 space-y-6">
-          {logs.length >= 2 && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-              <h2 className="font-bold text-slate-900 mb-2">{text.trend}</h2>
-              <PressureChart logs={logs} text={text} timeZone={user.timezone} />
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">{t.health.paramsTitle}</h2>
+              <p className="text-xs text-slate-500 mt-1">{t.health.paramsSubtitle}</p>
             </div>
-          )}
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="font-bold text-slate-900">{text.history}</h2>
-              <span className="text-xs text-slate-400">{logs.length}</span>
-            </div>
-            {logs.length === 0 ? (
-              <div className="px-5 py-14 text-center text-sm text-slate-400">
-                <HeartPulse className="w-9 h-9 mx-auto mb-2 text-slate-200" />
-                {text.empty}
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100 max-h-[420px] overflow-y-auto">
-                {logs.map((log) => (
-                  <div key={log.id} className="px-5 py-3.5 flex items-center gap-3">
-                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                      log.category === 'NORMAL' ? 'bg-emerald-500'
-                        : log.category === 'ELEVATED' ? 'bg-amber-500'
-                          : log.category === 'LOW' ? 'bg-sky-500' : 'bg-rose-500'
-                    }`} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-lg font-extrabold text-slate-900">{log.systolic}/{log.diastolic}</span>
-                        <span className="text-[11px] text-slate-400">mmHg</span>
-                        {log.pulse && <span className="text-[11px] text-slate-500 ml-1">{log.pulse} bpm</span>}
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-400">
-                        <Clock className="w-3 h-3" />
-                        {new Intl.DateTimeFormat(lang === 'id' ? 'id-ID' : 'en-US', {
-                          timeZone: user.timezone,
-                          dateStyle: 'medium',
-                          timeStyle: 'short',
-                        }).format(new Date(log.measuredAt))}
-                        <span>·</span>
-                        <span>{log.source === 'CLINIC' ? text.sourceClinic : text.sourceSelf}</span>
-                      </div>
-                      {log.note && <p className="text-xs text-slate-500 mt-1 truncate">{log.note}</p>}
-                    </div>
-                    <span className={`text-[10px] font-bold border rounded-full px-2 py-1 shrink-0 ${categoryStyle[log.category]}`}>
-                      {label(log.category)}
-                    </span>
-                  </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {lang === 'id' ? 'Jenis Parameter' : 'Parameter Type'}
+              </label>
+              <select
+                value={paramForm.type}
+                onChange={(e) => {
+                  setParamForm((p) => ({ ...p, type: e.target.value }));
+                  setSelectedParamType(e.target.value);
+                }}
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F6FBFA] border border-teal-100 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
+              >
+                {Object.keys(PARAM_DEFAULTS).map((key) => (
+                  <option key={key} value={key}>
+                    {t.health.paramTypes[key]} ({PARAM_DEFAULTS[key].unit})
+                  </option>
                 ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {lang === 'id' ? 'Nilai' : 'Value'} ({PARAM_DEFAULTS[paramForm.type]?.unit})
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  required
+                  placeholder={PARAM_DEFAULTS[paramForm.type]?.placeholder}
+                  value={paramForm.value}
+                  onChange={(e) => setParamForm((p) => ({ ...p, value: e.target.value }))}
+                  className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F6FBFA] border border-teal-100 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">{text.measuredAt}</label>
+                <input
+                  type="datetime-local"
+                  value={paramForm.measuredAt}
+                  onChange={(e) => setParamForm((p) => ({ ...p, measuredAt: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-2xl bg-[#F6FBFA] border border-teal-100 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">{text.note}</label>
+              <input
+                type="text"
+                value={paramForm.note}
+                onChange={(e) => setParamForm((p) => ({ ...p, note: e.target.value }))}
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F6FBFA] border border-teal-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={savingParam}
+              className="w-full py-3 rounded-full bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-sm transition disabled:opacity-50"
+            >
+              {savingParam ? t.common.saving : t.health.addParam}
+            </button>
+          </form>
+
+          <div className="lg:col-span-7 space-y-5">
+            {/* Parameter Filter Pills */}
+            <div className="flex flex-wrap gap-2">
+              {Object.keys(PARAM_DEFAULTS).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setSelectedParamType(key)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
+                    selectedParamType === key
+                      ? 'bg-teal-600 text-white border-teal-600'
+                      : 'bg-white text-slate-600 border-teal-100 hover:bg-teal-50'
+                  }`}
+                >
+                  {t.health.paramTypes[key]}
+                </button>
+              ))}
+            </div>
+
+            {/* Progress Chart */}
+            <div className="bg-white rounded-3xl p-5 border border-teal-100/80 shadow-sm">
+              <h3 className="text-sm font-extrabold text-slate-900 mb-3">
+                {t.health.paramChartTitle}: {t.health.paramTypes[selectedParamType]}
+              </h3>
+              {filteredParams.length >= 2 ? (
+                <ParamMiniChart
+                  logs={filteredParams}
+                  unit={PARAM_DEFAULTS[selectedParamType]?.unit}
+                  timeZone={tz}
+                  dateLocale={dateLocale}
+                />
+              ) : (
+                <p className="text-xs text-slate-400 py-6 text-center">
+                  {lang === 'id'
+                    ? 'Tambahkan minimal 2 catatan untuk menampilkan grafik perkembangan.'
+                    : 'Record at least 2 entries to view your progress chart.'}
+                </p>
+              )}
+            </div>
+
+            {/* Parameter History */}
+            <div className="bg-white rounded-3xl p-5 border border-teal-100/80 shadow-sm">
+              <h3 className="text-sm font-extrabold text-slate-900 mb-3">{t.health.paramHistory}</h3>
+              {paramLogs.length === 0 ? (
+                <p className="text-xs text-slate-400 py-4 text-center">{t.health.noParams}</p>
+              ) : (
+                <div className="divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                  {paramLogs.map((log) => (
+                    <div key={log.id} className="py-3 flex items-center justify-between gap-3">
+                      <div>
+                        <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full mr-2">
+                          {t.health.paramTypes[log.type] || log.type}
+                        </span>
+                        <span className="font-extrabold text-slate-900 text-sm">
+                          {log.value} {log.unit}
+                        </span>
+                        {log.note && <p className="text-xs text-slate-500 mt-0.5">{log.note}</p>}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[11px] text-slate-400">{formatDate(log.measuredAt)}</span>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await api.deleteHealthParameter(log.id);
+                            await loadAll();
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= TAB 4: FOLLOW-UP & CHECK-UP REMINDERS ================= */}
+      {activeTab === 'checkups' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <form
+            onSubmit={handleCreateCheckup}
+            className="lg:col-span-5 bg-white rounded-3xl p-6 border border-teal-100 shadow-sm space-y-4"
+          >
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">{t.health.addCheckup}</h2>
+              <p className="text-xs text-slate-500 mt-1">{t.health.checkupsSubtitle}</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">{t.health.checkupTitleLabel}</label>
+              <input
+                type="text"
+                required
+                placeholder={t.health.checkupTitlePlaceholder}
+                value={checkupForm.title}
+                onChange={(e) => setCheckupForm((p) => ({ ...p, title: e.target.value }))}
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F6FBFA] border border-teal-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">{t.health.checkupTypeLabel}</label>
+                <select
+                  value={checkupForm.type}
+                  onChange={(e) => setCheckupForm((p) => ({ ...p, type: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-2xl bg-[#F6FBFA] border border-teal-100 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-teal-500"
+                >
+                  {Object.keys(t.health.checkupTypes).map((k) => (
+                    <option key={k} value={k}>{t.health.checkupTypes[k]}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">{t.health.checkupDateLabel}</label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={checkupForm.scheduledAt}
+                  onChange={(e) => setCheckupForm((p) => ({ ...p, scheduledAt: e.target.value }))}
+                  className="w-full px-3 py-2.5 rounded-2xl bg-[#F6FBFA] border border-teal-100 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">{t.health.checkupLocationLabel}</label>
+              <input
+                type="text"
+                value={checkupForm.location}
+                onChange={(e) => setCheckupForm((p) => ({ ...p, location: e.target.value }))}
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F6FBFA] border border-teal-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">{t.health.checkupNotesLabel}</label>
+              <textarea
+                rows={2}
+                value={checkupForm.notes}
+                onChange={(e) => setCheckupForm((p) => ({ ...p, notes: e.target.value }))}
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F6FBFA] border border-teal-100 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={savingCheckup}
+              className="w-full py-3 rounded-full bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-sm flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{savingCheckup ? t.common.saving : t.health.addCheckup}</span>
+            </button>
+          </form>
+
+          <div className="lg:col-span-7 bg-white rounded-3xl p-5 sm:p-6 border border-teal-100/80 shadow-sm space-y-3">
+            <h3 className="text-sm font-extrabold text-slate-900">{t.health.checkupsTitle}</h3>
+            {checkups.length === 0 ? (
+              <p className="text-xs text-slate-400 py-8 text-center">{t.health.noCheckups}</p>
+            ) : (
+              <div className="space-y-3">
+                {checkups.map((item) => {
+                  const isDone = item.status === 'COMPLETED';
+                  return (
+                    <div
+                      key={item.id}
+                      className={`rounded-2xl p-4 border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        isDone ? 'bg-slate-50 border-slate-200 opacity-75' : 'bg-[#F6FBFA] border-teal-100'
+                      }`}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isDone ? 'bg-emerald-100 text-emerald-700' : 'bg-teal-100 text-teal-800'
+                          }`}>
+                            {t.health.checkupTypes[item.type] || item.type}
+                          </span>
+                          <span className="text-xs font-bold text-teal-700">
+                            {formatDate(item.scheduledAt)}
+                          </span>
+                        </div>
+                        <h4 className={`font-extrabold text-sm mt-1 ${isDone ? 'line-through text-slate-500' : 'text-slate-900'}`}>
+                          {item.title}
+                        </h4>
+                        {item.location && <p className="text-xs text-slate-600 mt-0.5">📍 {item.location}</p>}
+                        {item.notes && <p className="text-xs text-slate-500 mt-1">{item.notes}</p>}
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!isDone && (
+                          <button
+                            type="button"
+                            onClick={() => handleCompleteCheckup(item.id)}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>{t.health.markDone}</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCheckup(item.id)}
+                          className="p-2 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
