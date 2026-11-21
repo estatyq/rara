@@ -2,7 +2,9 @@ node_modules/
 dist/
 dev-dist/
 .env
+**/.env
 *.env.local
+.turbo/
 server/.vapid.json
 *.log
 .DS_Store

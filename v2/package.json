@@ -1,0 +1,34 @@
+{
+  "name": "dosemate-v2",
+  "version": "2.0.0",
+  "private": true,
+  "description": "DoseMate Cloud v2 — Global Multi-Tenant Digital Pharmacy & Medication Adherence Platform (TypeScript Strict Monorepo)",
+  "packageManager": "npm@11.13.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "db:generate": "npm --workspace=@dosemate/db run generate",
+    "db:migrate": "npm --workspace=@dosemate/db run migrate:deploy",
+    "db:push": "npm --workspace=@dosemate/db run push",
+    "db:seed": "npm --workspace=@dosemate/db run seed",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "turbo": "^2.4.4",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

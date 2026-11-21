@@ -1,0 +1,51 @@
+name: DoseMate v2 CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: v2
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: dosemate_v2
+          POSTGRES_USER: dosemate
+          POSTGRES_PASSWORD: dosemate_dev_password
+        ports:
+          - 5436:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      valkey:
+        image: valkey/valkey:8-alpine
+        ports:
+          - 6380:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: v2/package-lock.json
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run test
+        env:
+          DATABASE_URL: postgresql://dosemate:dosemate_dev_password@localhost:5436/dosemate_v2?schema=public
+          REDIS_URL: redis://localhost:6380
+          JWT_ACCESS_SECRET: ci-test-access-secret-32-bytes-minimum-key
+          JWT_REFRESH_SECRET: ci-test-refresh-secret-32-bytes-minimum-key
+          SECRETS_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef

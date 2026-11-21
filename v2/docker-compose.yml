@@ -1,0 +1,37 @@
+name: dosemate-v2-dev
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: dosemate_v2
+      POSTGRES_USER: dosemate
+      POSTGRES_PASSWORD: dosemate_dev_password
+    ports:
+      - "5436:5432"
+    volumes:
+      - dosemate_v2_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dosemate -d dosemate_v2"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    command: valkey-server --appendonly yes
+    ports:
+      - "6389:6379"
+    volumes:
+      - dosemate_v2_valkey:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  dosemate_v2_pg:
+  dosemate_v2_valkey:

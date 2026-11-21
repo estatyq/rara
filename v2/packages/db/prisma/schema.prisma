@@ -1,0 +1,713 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum GlobalRole {
+  PATIENT
+  CAREGIVER
+  PHARMACIST
+  TENANT_ADMIN
+  SUPER_ADMIN
+}
+
+enum TenantRole {
+  OWNER
+  TENANT_ADMIN
+  PHARMACIST
+  PHARMACY_TECH
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PAUSED
+  REVOKED
+}
+
+enum StudyGroup {
+  INTERVENTION
+  CONTROL
+}
+
+enum DoseStatus {
+  PENDING
+  TAKEN
+  SKIPPED
+  MISSED
+}
+
+enum CheckupStatus {
+  UPCOMING
+  COMPLETED
+  CANCELLED
+}
+
+enum ServiceRequestStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum AlertEscalationStatus {
+  NONE
+  PENDING_ACK
+  ACKNOWLEDGED
+  ESCALATED
+}
+
+enum AllergySeverity {
+  MILD
+  MODERATE
+  SEVERE
+  ANAPHYLAXIS
+}
+
+// ============================================================================
+// 1. MULTI-TENANCY (PHARMACIES / CLINICS / BRANCHES / QUOTAS)
+// ============================================================================
+
+model Tenant {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  countryCode     String   @default("ID")
+  defaultCurrency String   @default("IDR")
+  defaultLocale   String   @default("id")
+  inviteCode      String   @unique
+  logoUrl         String?
+  brandPrimaryHex String   @default("#0D9488")
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  branches           Branch[]
+  quota              TenantQuota?
+  integrationConfig  TenantIntegrationConfig?
+  staffMemberships   StaffMembership[]
+  enrollments        CareEnrollment[]
+  services           PharmacyService[]
+  serviceRequests    ServiceRequest[]
+  followUps          PatientFollowUp[]
+  messages           Message[]
+  articles           Article[]
+  checkupReminders   CheckupReminder[]
+  medications        Medication[]
+  notificationLogs   NotificationLog[]
+  consentRecords     ConsentRecord[]
+  auditLogs          AuditLog[]
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  address   String?
+  phone     String?
+  timezone  String   @default("Asia/Jakarta")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  staffMemberships StaffMembership[]
+  enrollments      CareEnrollment[]
+
+  @@index([tenantId])
+}
+
+model TenantQuota {
+  id              String   @id @default(cuid())
+  tenantId        String   @unique
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planCode        String   @default("CLINIC_STARTER")
+  maxPatients     Int      @default(500)
+  maxPharmacists  Int      @default(10)
+  monthlyWaLimit  Int      @default(2000)
+  monthlyWaUsed   Int      @default(0)
+  storageLimitMb  Int      @default(2048)
+  quotaResetAt    DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model TenantIntegrationConfig {
+  id                 String   @id @default(cuid())
+  tenantId           String   @unique
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  whatsappEnabled    Boolean  @default(true)
+  whatsappProvider   String   @default("SIMULATOR") // SIMULATOR | META_CLOUD | FONNTE | WABLAS
+  whatsappApiUrl     String?
+  encryptedApiToken  String?  // AES-256-GCM encrypted — NEVER returned in API responses
+  whatsappSenderId   String?
+  autoDoseEscalation Boolean  @default(true)
+  autoBpAlert        Boolean  @default(true)
+  updatedAt          DateTime @updatedAt
+}
+
+// ============================================================================
+// 2. IDENTITY, REVOCABLE SESSIONS, OTP & CONSENTS
+// ============================================================================
+
+model User {
+  id              String     @id @default(cuid())
+  globalRole      GlobalRole @default(PATIENT)
+  name            String
+  email           String?    @unique
+  phone           String?    @unique
+  emailVerifiedAt DateTime?
+  phoneVerifiedAt DateTime?
+  passwordHash    String
+  totpEnabled     Boolean    @default(false)
+  totpSecretEnc   String?
+  locale          String     @default("id")
+  timezone        String     @default("Asia/Jakarta")
+  countryCode     String     @default("ID")
+  /// Lock-screen PHI privacy mode (default TRUE: hides drug names & clinical numbers on lock screen)
+  privacyMode     Boolean    @default(true)
+  whatsappOptIn   Boolean    @default(true)
+  active          Boolean    @default(true)
+  deletedAt       DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  sessions              Session[]
+  otpChallenges         OtpChallenge[]
+  consents              ConsentRecord[]
+  staffMemberships      StaffMembership[]
+  pharmacistCredentials PharmacistCredential[]
+  patientProfile        PatientProfile?
+  caregiverLinks        CaregiverLink[]       @relation("CaregiverUser")
+  assignedEnrollments   CareEnrollment[]      @relation("AssignedPharmacist")
+  messages              Message[]
+  followUpsAuthored     PatientFollowUp[]     @relation("FollowUpPharmacist")
+  serviceRequests       ServiceRequest[]      @relation("ServicePharmacist")
+  pushSubscriptions     PushSubscription[]
+  notificationLogs      NotificationLog[]
+  auditLogs             AuditLog[]
+}
+
+model Session {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String    @unique
+  transport        String    @default("COOKIE") // COOKIE | BEARER
+  userAgent        String?
+  ipAddress        String?
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([userId, revokedAt])
+  @@index([expiresAt])
+}
+
+model OtpChallenge {
+  id         String    @id @default(cuid())
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel    String    // WHATSAPP | EMAIL
+  target     String
+  codeHash   String
+  purpose    String    // PHONE_VERIFY | LOGIN | PASSWORD_RESET
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([target, purpose])
+}
+
+model ConsentRecord {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  consentType String   @default("CLINICAL_AND_PRIVACY")
+  version     String
+  ipAddress   String?
+  userAgent   String?
+  acceptedAt  DateTime @default(now())
+
+  @@index([userId, acceptedAt])
+}
+
+// ============================================================================
+// 3. PHARMACIST STAFF & FLEXIBLE GLOBAL CREDENTIALS (STRA/SIPA/RPH/GPHC)
+// ============================================================================
+
+model StaffMembership {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId  String
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId  String?
+  branch    Branch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  role      TenantRole @default(PHARMACIST)
+  active    Boolean    @default(true)
+  revokedAt DateTime?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([userId, tenantId])
+  @@index([tenantId, active])
+}
+
+model PharmacistCredential {
+  id                 String             @id @default(cuid())
+  userId             String
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  countryCode        String             @default("ID")
+  licenseType        String             // STRA | SIPA | RPH | GPHC | OTHER
+  licenseNumber      String
+  issuingAuthority   String?
+  workplace          String?
+  specialization     String?
+  yearsExperience    Int?
+  documentKey        String?            // Encrypted R2/S3 object key for uploaded license scan
+  verificationStatus VerificationStatus @default(PENDING)
+  verifiedAt         DateTime?
+  verifiedById       String?
+  verificationNote   String?
+  expiresAt          DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([userId, verificationStatus])
+}
+
+// ============================================================================
+// 4. GLOBAL PATIENT ACCOUNT + CARE ENROLLMENT (B2B2C DECOUPLING) + CAREGIVERS
+// ============================================================================
+
+model PatientProfile {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth       DateTime?
+  gender            String?
+  address           String?
+  diagnosis         String?
+  estimatedDueDate  DateTime?
+  riskFactors       String?
+  baselineSystolic  Int?
+  baselineDiastolic Int?
+  deletedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  allergies        PatientAllergy[]
+  enrollments      CareEnrollment[]
+  caregivers       CaregiverLink[]
+  medications      Medication[]
+  doseLogs         DoseLog[]
+  bloodPressures   BloodPressureLog[]
+  healthParameters HealthParameterLog[]
+  checkupReminders CheckupReminder[]
+  followUps        PatientFollowUp[]
+  serviceRequests  ServiceRequest[]
+  messages         Message[]
+  notificationLogs NotificationLog[]
+}
+
+model PatientAllergy {
+  id            String          @id @default(cuid())
+  patientId     String
+  patient       PatientProfile  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  substanceName String
+  substanceCode String?         // KFA / ATC / RxNorm code
+  severity      AllergySeverity @default(MODERATE)
+  reaction      String?
+  createdAt     DateTime        @default(now())
+
+  @@index([patientId])
+}
+
+model CareEnrollment {
+  id            String           @id @default(cuid())
+  patientId     String
+  patient       PatientProfile   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  tenantId      String
+  tenant        Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  branchId      String?
+  branch        Branch?          @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  pharmacistId  String?
+  pharmacist    User?            @relation("AssignedPharmacist", fields: [pharmacistId], references: [id], onDelete: SetNull)
+  studyCode     String?
+  studyGroup    StudyGroup       @default(INTERVENTION)
+  status        EnrollmentStatus @default(ACTIVE)
+  /// Internal pharmacist notes (scoped to tenant, never shown to patient)
+  internalNotes String?
+  enrolledAt    DateTime         @default(now())
+  revokedAt     DateTime?
+  updatedAt     DateTime         @updatedAt
+
+  @@unique([patientId, tenantId])
+  @@unique([tenantId, studyCode])
+  @@index([tenantId, status])
+  @@index([pharmacistId])
+}
+
+model CaregiverLink {
+  id                    String           @id @default(cuid())
+  patientId             String
+  patient               PatientProfile   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  caregiverUserId       String?
+  caregiverUser         User?            @relation("CaregiverUser", fields: [caregiverUserId], references: [id], onDelete: SetNull)
+  inviteTarget          String           // Phone or email
+  relationship          String
+  canViewAdherence      Boolean          @default(true)
+  receiveCriticalAlerts Boolean          @default(true)
+  status                EnrollmentStatus @default(ACTIVE)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  @@index([patientId, status])
+  @@index([caregiverUserId])
+}
+
+// ============================================================================
+// 5. IMMUTABLE VERSIONED MEDICATIONS + LOCAL-TIME DOSE LOGS (SECTION A & D)
+// ============================================================================
+
+model Medication {
+  id                   String          @id @default(cuid())
+  patientId            String
+  patient              PatientProfile  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  tenantId             String?
+  tenant               Tenant?         @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  /// Points to prior regimen version when dosage/schedule is modified (preserves historical accuracy)
+  previousMedicationId String?
+  displayName          String
+  activeIngredient     String?
+  drugCode             String?         // KFA / ATC / RxNorm
+  drugCodeSystem       String?         // KFA | ATC | RXNORM | CUSTOM
+  dosage               String?
+  strengthValue        Float?
+  strengthUnit         String?
+  form                 String?
+  instructions         String?
+  times                String[]
+  /// Structured complex regimen rule: { type: DAILY|SPECIFIC_WEEKDAYS|INTERVAL_DAYS|PRN, weekdays?, intervalDays?, mealRelation }
+  scheduleRule         Json
+  startDate            DateTime        @default(now())
+  endDate              DateTime?
+  active               Boolean         @default(true)
+  articleId            String?
+  article              Article?        @relation(fields: [articleId], references: [id], onDelete: SetNull)
+  createdById          String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  doseLogs DoseLog[]
+
+  @@index([patientId, active])
+  @@index([tenantId])
+}
+
+model DoseLog {
+  id                String         @id @default(cuid())
+  medicationId      String
+  medication        Medication     @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  patientId         String
+  patient           PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  scheduledAt       DateTime
+  /// Preserves local wall-clock calendar day & time even across DST / travel
+  localDate         String
+  localTime         String
+  timezone          String
+  status            DoseStatus     @default(PENDING)
+  takenAt           DateTime?
+  /// Client-captured offline timestamp vs server receipt timestamp for auditability
+  clientConfirmedAt DateTime?
+  serverReceivedAt  DateTime?
+  remindedAt        DateTime?
+  waEscalatedAt     DateTime?
+  note              String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@unique([medicationId, scheduledAt])
+  @@index([patientId, localDate])
+  @@index([patientId, scheduledAt])
+  @@index([status, scheduledAt])
+}
+
+// ============================================================================
+// 6. HEALTH MONITORING & CRITICAL ESCALATION SLA (SECTION B)
+// ============================================================================
+
+model BloodPressureLog {
+  id               String                @id @default(cuid())
+  patientId        String
+  patient          PatientProfile        @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  systolic         Int
+  diastolic        Int
+  pulse            Int?
+  measuredAt       DateTime              @default(now())
+  note             String?
+  source           String                @default("SELF")
+  alertStatus      AlertEscalationStatus @default(NONE)
+  acknowledgedById String?
+  acknowledgedAt   DateTime?
+  escalatedAt      DateTime?
+  createdAt        DateTime              @default(now())
+
+  @@index([patientId, measuredAt])
+  @@index([alertStatus, createdAt])
+}
+
+model HealthParameterLog {
+  id         String         @id @default(cuid())
+  patientId  String
+  patient    PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  type       String         // WEIGHT | BLOOD_GLUCOSE | HEART_RATE | SPO2 | TEMPERATURE | FETAL_MOVEMENT | EDEMA | URINE_PROTEIN
+  value      Float
+  unit       String
+  context    String?
+  note       String?
+  source     String         @default("SELF")
+  measuredAt DateTime       @default(now())
+  createdAt  DateTime       @default(now())
+
+  @@index([patientId, type, measuredAt])
+}
+
+model CheckupReminder {
+  id          String         @id @default(cuid())
+  patientId   String
+  patient     PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  tenantId    String?
+  tenant      Tenant?        @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  createdById String?
+  title       String
+  type        String         @default("CHECKUP") // CHECKUP | FOLLOW_UP | LAB_TEST | REFILL
+  scheduledAt DateTime
+  location    String?
+  notes       String?
+  status      CheckupStatus  @default(UPCOMING)
+  remindedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([patientId, scheduledAt])
+  @@index([status, scheduledAt])
+}
+
+// ============================================================================
+// 7. PHARMACEUTICAL CARE, MULTI-LANGUAGE CATALOG & EDUCATION (SECTIONS D & E)
+// ============================================================================
+
+model PharmacyService {
+  id              String   @id @default(cuid())
+  tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code            String
+  category        String   @default("TELEPHARMACY")
+  durationMinutes Int      @default(30)
+  /// Integer minor units (or whole units for zero-decimal currencies like IDR)
+  priceMinor      Int      @default(0)
+  currency        String   @default("IDR")
+  icon            String   @default("Stethoscope")
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  translations PharmacyServiceTranslation[]
+  requests     ServiceRequest[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, active])
+}
+
+model PharmacyServiceTranslation {
+  id          String          @id @default(cuid())
+  serviceId   String
+  service     PharmacyService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  locale      String          // "id", "en", "ms", "ar", etc.
+  name        String
+  description String
+
+  @@unique([serviceId, locale])
+}
+
+model ServiceRequest {
+  id              String               @id @default(cuid())
+  tenantId        String
+  tenant          Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         PatientProfile       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  serviceId       String
+  service         PharmacyService      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  pharmacistId    String?
+  pharmacist      User?                @relation("ServicePharmacist", fields: [pharmacistId], references: [id], onDelete: SetNull)
+  preferredDate   DateTime?
+  complaint       String?
+  status          ServiceRequestStatus @default(PENDING)
+  pharmacistReply String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([tenantId, status, createdAt])
+  @@index([patientId, createdAt])
+}
+
+model PatientFollowUp {
+  id               String         @id @default(cuid())
+  tenantId         String
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patientId        String
+  patient          PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  pharmacistId     String
+  pharmacist       User           @relation("FollowUpPharmacist", fields: [pharmacistId], references: [id], onDelete: Restrict)
+  type             String         @default("PTO_REPORT")
+  subjective       String?
+  objective        String?
+  assessment       String?
+  plan             String
+  drpCategory      String         @default("NONE")
+  recommendation   String?
+  adherenceRate    Float?
+  latestBp         String?
+  nextFollowUpDate DateTime?
+  /// Tamper-evident verification hash printed in PDF PTO QR code
+  verificationHash String         @default(cuid())
+  sentViaWhatsApp  Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([tenantId, patientId, createdAt])
+}
+
+model Article {
+  id            String   @id @default(cuid())
+  tenantId      String?
+  tenant        Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  slug          String   @unique
+  category      String
+  mediaType     String   @default("ARTICLE") // ARTICLE | VIDEO
+  coverImage    String?
+  videoUrl      String?
+  durationLabel String?
+  drugName      String?
+  drugCode      String?
+  published     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  translations ArticleTranslation[]
+  medications  Medication[]
+
+  @@index([published, mediaType, category])
+}
+
+model ArticleTranslation {
+  id        String  @id @default(cuid())
+  articleId String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  locale    String  // "id", "en", ...
+  title     String
+  summary   String?
+  body      String
+
+  @@unique([articleId, locale])
+}
+
+model Message {
+  id            String         @id @default(cuid())
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  patientId     String
+  patient       PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  senderId      String
+  sender        User           @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  body          String
+  attachmentKey String?        // Encrypted R2/S3 object key (EXIF stripped)
+  readAt        DateTime?
+  createdAt     DateTime       @default(now())
+
+  @@index([tenantId, patientId, createdAt])
+}
+
+// ============================================================================
+// 8. PUSH, NOTIFICATIONS, IDEMPOTENCY & IMMUTABLE AUDIT TRAIL
+// ============================================================================
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform  String   @default("WEB") // WEB | FCM | APNS
+  endpoint  String   @unique
+  p256dh    String?
+  auth      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model NotificationLog {
+  id             String          @id @default(cuid())
+  tenantId       String?
+  tenant         Tenant?         @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  userId         String?
+  user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  patientId      String?
+  patient        PatientProfile? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  channel        String          // PUSH | WHATSAPP | EMAIL
+  category       String          // DOSE_REMINDER | BP_ALERT | CHECKUP | FOLLOW_UP | OTP
+  templateName   String?
+  recipient      String
+  payloadPreview String
+  status         String          @default("QUEUED") // QUEUED | SENT | DELIVERED | FAILED
+  provider       String          @default("SIMULATOR")
+  externalId     String?
+  createdAt      DateTime        @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([patientId, createdAt])
+}
+
+model IdempotencyRecord {
+  key          String   @id
+  userId       String
+  method       String
+  path         String
+  statusCode   Int
+  responseBody Json
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String?
+  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorName  String
+  actorRole  String
+  action     String
+  entityType String
+  entityId   String?
+  ipAddress  String?
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+  @@index([createdAt])
+}
