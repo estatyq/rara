@@ -94,4 +94,56 @@ export const questionnaires = [
       },
     ],
   },
+  {
+    code: 'BP-MONITORING',
+    titleId: 'Pemantauan Tekanan Darah & Dukungan Apoteker',
+    titleEn: 'Blood Pressure Monitoring & Pharmacist Support',
+    descriptionId: 'Survei singkat tentang keteraturan pengukuran dan pengalaman menerima dukungan apoteker.',
+    descriptionEn: 'A short survey about measurement consistency and the experience of pharmacist support.',
+    active: true,
+    questions: [
+      {
+        id: 'bp1',
+        textId: 'Seberapa sering Anda mengukur tekanan darah dalam tujuh hari terakhir?',
+        textEn: 'How often did you measure your blood pressure in the past seven days?',
+        options: [
+          { value: 'daily', textId: 'Setiap hari', textEn: 'Every day', score: 3 },
+          { value: 'some_days', textId: 'Beberapa hari', textEn: 'Some days', score: 2 },
+          { value: 'once', textId: 'Satu kali', textEn: 'Once', score: 1 },
+          { value: 'never', textId: 'Belum pernah', textEn: 'Not yet', score: 0 },
+        ],
+      },
+      {
+        id: 'bp2',
+        textId: 'Apakah Anda mencatat hasil tekanan darah secara rutin?',
+        textEn: 'Do you record your blood pressure results regularly?',
+        options: [
+          { value: 'always', textId: 'Selalu', textEn: 'Always', score: 3 },
+          { value: 'often', textId: 'Sering', textEn: 'Often', score: 2 },
+          { value: 'sometimes', textId: 'Kadang-kadang', textEn: 'Sometimes', score: 1 },
+          { value: 'never', textId: 'Tidak pernah', textEn: 'Never', score: 0 },
+        ],
+      },
+      {
+        id: 'bp3',
+        textId: 'Apakah Anda mengetahui tanda bahaya yang harus segera dilaporkan saat kehamilan?',
+        textEn: 'Do you know the warning signs that should be reported urgently during pregnancy?',
+        options: [
+          { value: 'yes', textId: 'Ya, saya mengetahuinya', textEn: 'Yes, I know them', score: 2 },
+          { value: 'some', textId: 'Sebagian saja', textEn: 'Only some of them', score: 1 },
+          { value: 'no', textId: 'Belum mengetahui', textEn: 'Not yet', score: 0 },
+        ],
+      },
+      {
+        id: 'bp4',
+        textId: 'Apakah konsultasi dengan apoteker membantu Anda memahami tekanan darah dan obat Anda?',
+        textEn: 'Did pharmacist consultation help you understand your blood pressure and medicines?',
+        options: [
+          { value: 'yes', textId: 'Sangat membantu', textEn: 'Very helpful', score: 3 },
+          { value: 'partly', textId: 'Cukup membantu', textEn: 'Somewhat helpful', score: 2 },
+          { value: 'no', textId: 'Belum membantu', textEn: 'Not yet', score: 0 },
+        ],
+      },
+    ],
+  },
 ];

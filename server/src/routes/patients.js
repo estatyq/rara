@@ -7,6 +7,7 @@ import { HttpError } from '../errors.js';
 import { adherenceFor, adherenceRates, rematerializePatient } from '../doses.js';
 import { isValidDate, isValidTimezone, startOfLocalDay } from '../time.js';
 import { normalizePhone } from './auth.js';
+import { classifyBloodPressure, isControlled } from '../bloodPressure.js';
 
 const router = Router();
 
@@ -19,6 +20,8 @@ const profileFields = {
   address: optText(500),
   diagnosis: optText(500),
   allergies: optText(500),
+  estimatedDueDate: z.preprocess(emptyToNull, z.string().refine(isValidDate, 'Invalid date').nullable().optional()),
+  riskFactors: optText(1000),
 };
 
 const staffFields = {
@@ -26,6 +29,11 @@ const staffFields = {
   notes: optText(5000),
   studyCode: optText(50),
   pharmacistId: z.preprocess(emptyToNull, z.string().nullable().optional()),
+  estimatedDueDate: z.preprocess(emptyToNull, z.string().refine(isValidDate, 'Invalid date').nullable().optional()),
+  riskFactors: optText(1000),
+  studyGroup: z.enum(['INTERVENTION', 'CONTROL']).optional(),
+  baselineSystolic: z.preprocess(emptyToNull, z.coerce.number().int().min(60).max(260).nullable().optional()),
+  baselineDiastolic: z.preprocess(emptyToNull, z.coerce.number().int().min(30).max(160).nullable().optional()),
 };
 
 const userFields = {
@@ -38,10 +46,16 @@ const userFields = {
 
 const toProfileData = (d, tz) => {
   const out = {};
-  for (const k of ['gender', 'address', 'diagnosis', 'allergies', 'notes', 'studyCode', 'pharmacistId']) {
+  for (const k of [
+    'gender', 'address', 'diagnosis', 'allergies', 'notes', 'studyCode', 'pharmacistId',
+    'riskFactors', 'studyGroup', 'baselineSystolic', 'baselineDiastolic',
+  ]) {
     if (d[k] !== undefined) out[k] = d[k];
   }
   if (d.dateOfBirth !== undefined) out.dateOfBirth = d.dateOfBirth ? startOfLocalDay(d.dateOfBirth, tz) : null;
+  if (d.estimatedDueDate !== undefined) {
+    out.estimatedDueDate = d.estimatedDueDate ? startOfLocalDay(d.estimatedDueDate, tz) : null;
+  }
   return out;
 };
 
@@ -53,8 +67,8 @@ const toUserData = (d) => {
 };
 
 const patientInclude = {
-  user: { select: { id: true, name: true, email: true, phone: true, locale: true, timezone: true, active: true, createdAt: true } },
-  pharmacist: { select: { id: true, name: true } },
+  user: { select: { id: true, name: true, email: true, phone: true, locale: true, timezone: true, whatsappOptIn: true, active: true, createdAt: true } },
+  pharmacist: { select: { id: true, name: true, phone: true, email: true, pharmacistProfile: true } },
 };
 
 const serializePatient = (p, viewer) => {
@@ -88,7 +102,7 @@ router.get('/', requireStaff, async (req, res) => {
   const ids = patients.map((p) => p.id);
   const userIds = patients.map((p) => p.userId);
 
-  const [rate7, rate30, unread, lastMessages] = await Promise.all([
+  const [rate7, rate30, unread, lastMessages, bloodPressures] = await Promise.all([
     adherenceRates(ids, 7),
     adherenceRates(ids, 30),
     prisma.message.groupBy({
@@ -97,19 +111,47 @@ router.get('/', requireStaff, async (req, res) => {
       _count: { _all: true },
     }),
     prisma.message.groupBy({ by: ['patientId'], where: { patientId: { in: ids } }, _max: { createdAt: true } }),
+    prisma.bloodPressureLog.findMany({
+      where: {
+        patientId: { in: ids },
+        measuredAt: { gte: new Date(Date.now() - 30 * 86400000) },
+      },
+      select: { patientId: true, systolic: true, diastolic: true, measuredAt: true },
+      orderBy: { measuredAt: 'desc' },
+    }),
   ]);
   const unreadMap = Object.fromEntries(unread.map((u) => [u.patientId, u._count._all]));
   const lastMap = Object.fromEntries(lastMessages.map((m) => [m.patientId, m._max.createdAt]));
+  const bpByPatient = new Map();
+  for (const bp of bloodPressures) {
+    if (!bpByPatient.has(bp.patientId)) bpByPatient.set(bp.patientId, []);
+    bpByPatient.get(bp.patientId).push(bp);
+  }
 
   res.json({
-    patients: patients.map((p) => ({
-      ...p,
-      activeMedications: p._count.medications,
-      adherence7: rate7[p.id],
-      adherence30: rate30[p.id],
-      unread: unreadMap[p.id] || 0,
-      lastMessageAt: lastMap[p.id] || null,
-    })),
+    patients: patients.map((p) => {
+      const logs = bpByPatient.get(p.id) || [];
+      const latest = logs[0] || null;
+      return {
+        ...p,
+        activeMedications: p._count.medications,
+        adherence7: rate7[p.id],
+        adherence30: rate30[p.id],
+        unread: unreadMap[p.id] || 0,
+        lastMessageAt: lastMap[p.id] || null,
+        latestBloodPressure: latest
+          ? {
+              systolic: latest.systolic,
+              diastolic: latest.diastolic,
+              measuredAt: latest.measuredAt,
+              category: classifyBloodPressure(latest.systolic, latest.diastolic),
+            }
+          : null,
+        bloodPressureControlRate: logs.length
+          ? Math.round((logs.filter(isControlled).length / logs.length) * 100)
+          : null,
+      };
+    }),
   });
 });
 
@@ -118,6 +160,7 @@ const createSchema = z
     ...userFields,
     name: z.string().trim().min(2).max(100),
     password: z.string().min(6).max(100),
+    consentAccepted: z.literal(true),
     ...staffFields,
   })
   .refine((d) => d.email || d.phone, { message: 'Email or phone is required', path: ['email'] });
@@ -130,7 +173,7 @@ router.post('/', requireStaff, async (req, res) => {
       ...toUserData(d),
       role: 'PATIENT',
       passwordHash: await bcrypt.hash(d.password, 10),
-      patient: { create: { pharmacistId: req.user.id, ...toProfileData(d, tz) } },
+      patient: { create: { pharmacistId: req.user.id, consentedAt: new Date(), ...toProfileData(d, tz) } },
     },
     include: { patient: true },
   });

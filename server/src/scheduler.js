@@ -5,6 +5,7 @@ import { sendPushToUser } from './push.js';
 import { emitToUser } from './realtime.js';
 import { signDoseToken } from './auth.js';
 import { tr } from './i18n.js';
+import { sendWhatsAppMessage, getSystemConfigMap } from './whatsapp.js';
 
 const REMIND_WINDOW_MIN = 30;
 let ticking = false;
@@ -14,6 +15,7 @@ async function tick() {
   ticking = true;
   try {
     const now = new Date();
+    const sysCfg = await getSystemConfigMap().catch(() => ({}));
     const due = await prisma.doseLog.findMany({
       where: {
         status: 'PENDING',
@@ -46,8 +48,27 @@ async function tick() {
         ],
         data: { doseId: dose.id, doseToken: signDoseToken(dose.id, user.id) },
       };
-      emitToUser(user.id, 'dose:due', { doseId: dose.id, medication: dose.medication.name });
+      emitToUser(user.id, 'dose:due', {
+        doseId: dose.id,
+        medication: dose.medication.name,
+        dosage: dose.medication.dosage,
+        instructions: dose.medication.instructions,
+      });
       sendPushToUser(user.id, payload).catch((e) => console.warn('[scheduler] push error', e.message));
+
+      if (user.phone && user.whatsappOptIn && sysCfg.whatsapp_auto_dose_reminder !== 'false') {
+        const waMsg =
+          user.locale === 'en'
+            ? `[Apoteku Reminder] Hello ${user.name}, it is time to take your medication: *${dose.medication.name}*${dose.medication.dosage ? ` (${dose.medication.dosage})` : ''}.${dose.medication.instructions ? ` Note: ${dose.medication.instructions}` : ''} Please confirm in the app once taken.`
+            : `[Pengingat Obat Apoteku] Halo ${user.name}, saatnya minum obat Anda: *${dose.medication.name}*${dose.medication.dosage ? ` (${dose.medication.dosage})` : ''}.${dose.medication.instructions ? ` Aturan pakai: ${dose.medication.instructions}` : ''} Silakan konfirmasi di aplikasi setelah diminum.`;
+        sendWhatsAppMessage({
+          phone: user.phone,
+          message: waMsg,
+          category: 'DOSE_REMINDER',
+          userId: user.id,
+          patientId: dose.patientId,
+        }).catch((e) => console.warn('[scheduler] whatsapp error', e.message));
+      }
     }
 
     await prisma.doseLog.updateMany({

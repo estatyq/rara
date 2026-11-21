@@ -7,19 +7,22 @@ import Register from './pages/Register';
 // Patient Pages
 import PatientDashboard from './pages/patient/Dashboard';
 import PatientMedications from './pages/patient/Medications';
+import PatientServices from './pages/patient/Services';
 import PatientChat from './pages/patient/Chat';
 import PatientEducation from './pages/patient/Education';
 import ArticleDetail from './pages/patient/ArticleDetail';
 import PatientSurveys from './pages/patient/Surveys';
 import PatientProfile from './pages/patient/Profile';
+import PatientBloodPressure from './pages/patient/BloodPressure';
 
-// Staff Pages
+// Staff & Admin Pages
 import StaffDashboard from './pages/staff/Dashboard';
 import StaffPatientDetail from './pages/staff/PatientDetail';
 import StaffConversations from './pages/staff/Conversations';
 import StaffEducationManager from './pages/staff/EducationManager';
 import StaffQuestionnairesManager from './pages/staff/QuestionnairesManager';
 import ResearchExport from './pages/staff/ResearchExport';
+import AdminPortal from './pages/admin/AdminPortal';
 
 function ProtectedLayout() {
   const { user, loading } = useAuth();
@@ -58,6 +61,12 @@ function StaffRoute({ children }) {
   return children;
 }
 
+function AdminRoute({ children }) {
+  const { isAdmin, isStaff } = useAuth();
+  if (!isAdmin) return <Navigate to={isStaff ? '/staff' : '/'} replace />;
+  return children;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -69,6 +78,8 @@ export default function App() {
         {/* Patient Portal */}
         <Route path="/" element={<PatientRoute><PatientDashboard /></PatientRoute>} />
         <Route path="/medications" element={<PatientRoute><PatientMedications /></PatientRoute>} />
+        <Route path="/services" element={<PatientRoute><PatientServices /></PatientRoute>} />
+        <Route path="/blood-pressure" element={<PatientRoute><PatientBloodPressure /></PatientRoute>} />
         <Route path="/chat" element={<PatientRoute><PatientChat /></PatientRoute>} />
         <Route path="/education" element={<PatientRoute><PatientEducation /></PatientRoute>} />
         <Route path="/education/:slug" element={<PatientRoute><ArticleDetail /></PatientRoute>} />
@@ -82,6 +93,9 @@ export default function App() {
         <Route path="/staff/education" element={<StaffRoute><StaffEducationManager /></StaffRoute>} />
         <Route path="/staff/questionnaires" element={<StaffRoute><StaffQuestionnairesManager /></StaffRoute>} />
         <Route path="/staff/export" element={<StaffRoute><ResearchExport /></StaffRoute>} />
+
+        {/* Administrator Portal */}
+        <Route path="/admin" element={<AdminRoute><AdminPortal /></AdminRoute>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

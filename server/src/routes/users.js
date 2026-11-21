@@ -14,7 +14,10 @@ router.get('/staff', requireStaff, async (req, res) => {
   const users = await prisma.user.findMany({
     where: { role: { in: ['PHARMACIST', 'ADMIN'] } },
     orderBy: { name: 'asc' },
-    include: { _count: { select: { assignedPatients: true } } },
+    include: {
+      pharmacistProfile: true,
+      _count: { select: { assignedPatients: true } },
+    },
   });
   res.json({ users: users.map(publicUser) });
 });

@@ -49,7 +49,7 @@ export const api = {
   getMe: () => request('/auth/me'),
   updateMe: (data) => request('/auth/me', { method: 'PATCH', body: JSON.stringify(data) }),
 
-  // Patients (Staff endpoints)
+  // Patients
   getPatients: (params = {}) => {
     const q = new URLSearchParams(params).toString();
     return request(`/patients${q ? `?${q}` : ''}`);
@@ -57,7 +57,20 @@ export const api = {
   createPatient: (data) => request('/patients', { method: 'POST', body: JSON.stringify(data) }),
   getPatient: (id) => request(`/patients/${id}`),
   updatePatient: (id, data) => request(`/patients/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  resetPatientPassword: (id, password) =>
+    request(`/patients/${id}/reset-password`, { method: 'POST', body: JSON.stringify({ password }) }),
   getAdherence: (id, days = 30) => request(`/patients/${id}/adherence?days=${days}`),
+
+  // Blood pressure monitoring
+  getBloodPressures: (patientId = 'me', days = 30, limit = 60) =>
+    request(`/patients/${patientId}/blood-pressure?days=${days}&limit=${limit}`),
+  recordBloodPressure: (patientId, data) =>
+    request(`/patients/${patientId}/blood-pressure`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  deleteBloodPressure: (id) =>
+    request(`/blood-pressure/${id}`, { method: 'DELETE' }),
 
   // Doses & Medications
   getDoses: (patientId = 'me', from, to) => {
@@ -78,6 +91,38 @@ export const api = {
     request(`/medications/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteMedication: (id) =>
     request(`/medications/${id}`, { method: 'DELETE' }),
+
+  // Follow-ups & Pharmacotherapy Monitoring Reports (PTO)
+  getFollowUps: (patientId = 'me') =>
+    request(`/patients/${patientId}/follow-ups`),
+  createFollowUp: (patientId, data) =>
+    request(`/patients/${patientId}/follow-ups`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteFollowUp: (id) =>
+    request(`/follow-ups/${id}`, { method: 'DELETE' }),
+
+  // WhatsApp Integration (Patient-scoped)
+  getPatientWhatsAppLogs: (patientId = 'me') =>
+    request(`/patients/${patientId}/whatsapp-logs`),
+  sendPatientWhatsApp: (patientId, data) =>
+    request(`/patients/${patientId}/whatsapp-send`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Pharmacy Services & Bookings
+  getServices: (all = false) =>
+    request(`/services${all ? '?all=1' : ''}`),
+  createService: (data) =>
+    request('/services', { method: 'POST', body: JSON.stringify(data) }),
+  updateService: (id, data) =>
+    request(`/services/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteService: (id) =>
+    request(`/services/${id}`, { method: 'DELETE' }),
+  getServiceRequests: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/services/requests${q ? `?${q}` : ''}`);
+  },
+  createServiceRequest: (data) =>
+    request('/services/requests', { method: 'POST', body: JSON.stringify(data) }),
+  updateServiceRequest: (id, data) =>
+    request(`/services/requests/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Chat & Messages
   getMessages: (patientId = 'me', limit = 50) =>
@@ -113,8 +158,24 @@ export const api = {
   subscribePush: (subscription) => request('/push/subscribe', { method: 'POST', body: JSON.stringify(subscription) }),
   testPush: () => request('/push/test', { method: 'POST' }),
 
-  // Staff Management
+  // Staff & Admin Management
   getStaffList: () => request('/users/staff'),
+  getAdminOverview: () => request('/admin/overview'),
+  getAdminUsers: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/admin/users${q ? `?${q}` : ''}`);
+  },
+  createAdminUser: (data) =>
+    request('/admin/users', { method: 'POST', body: JSON.stringify(data) }),
+  updateAdminUser: (id, data) =>
+    request(`/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  verifyPharmacist: (userId, data) =>
+    request(`/admin/pharmacists/${userId}/verify`, { method: 'PATCH', body: JSON.stringify(data) }),
+  getAdminSystem: () => request('/admin/system'),
+  updateSystemConfig: (data) =>
+    request('/admin/system/config', { method: 'PUT', body: JSON.stringify(data) }),
+  sendAdminWhatsApp: (data) =>
+    request('/admin/whatsapp/send', { method: 'POST', body: JSON.stringify(data) }),
 
   // Research CSV export URL helpers
   getExportUrl: (type, params = {}) => {

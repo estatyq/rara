@@ -21,7 +21,10 @@ export async function userFromToken(token) {
   if (!payload?.sub) throw new Error('bad token');
   const user = await prisma.user.findUnique({
     where: { id: payload.sub },
-    include: { patient: { select: { id: true } } },
+    include: {
+      patient: { select: { id: true, studyCode: true, estimatedDueDate: true, pharmacistId: true } },
+      pharmacistProfile: true,
+    },
   });
   if (!user || !user.active) throw new Error('inactive');
   return user;

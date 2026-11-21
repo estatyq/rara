@@ -21,22 +21,51 @@ export default function Login() {
     setLoading(true);
     try {
       const user = await login(identifier, password);
-      if (user.role === 'PHARMACIST' || user.role === 'ADMIN') {
+      if (user.role === 'ADMIN') {
+        navigate('/admin');
+      } else if (user.role === 'PHARMACIST') {
         navigate('/staff');
       } else {
         navigate('/');
       }
     } catch (err) {
-      setError(err.message || 'Login failed');
+      if (err.status === 401) {
+        setError(
+          lang === 'id'
+            ? 'Email/nomor HP atau kata sandi salah. Untuk akun demo, gunakan tombol cepat di bawah.'
+            : 'Incorrect email/phone or password. Use a quick demo button below.',
+        );
+      } else if (err.status >= 500) {
+        setError(
+          lang === 'id'
+            ? 'Server sedang tidak tersedia. Pastikan backend sudah berjalan.'
+            : 'The server is currently unavailable. Make sure the backend is running.',
+        );
+      } else {
+        setError(err.message || (lang === 'id' ? 'Gagal masuk' : 'Login failed'));
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const autofill = (id, pass) => {
-    setIdentifier(id);
-    setPassword(pass);
+  const handleDemoLogin = async (id, pass, role) => {
     setError('');
+    setLoading(true);
+    try {
+      const u = await login(id, pass);
+      navigate(u.role === 'ADMIN' ? '/admin' : role === 'staff' ? '/staff' : '/');
+    } catch (err) {
+      setIdentifier(id);
+      setPassword(pass);
+      setError(
+        err.status === 401
+          ? (lang === 'id' ? 'Email atau kata sandi demo tidak sesuai.' : 'The demo email or password is incorrect.')
+          : (lang === 'id' ? 'Server tidak dapat dihubungi. Pastikan backend sudah berjalan.' : 'The server is unavailable. Make sure the backend is running.'),
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -111,12 +140,12 @@ export default function Login() {
           {/* Quick Demo Fill Buttons */}
           <div className="mt-6 pt-6 border-t border-slate-100">
             <p className="text-xs font-semibold text-slate-500 mb-2.5 text-center">
-              {t.auth.demoAccounts}
+              {lang === 'id' ? 'Masuk cepat dengan akun demo:' : 'Quick demo sign-in:'}
             </p>
             <div className="grid grid-cols-1 gap-2">
               <button
                 type="button"
-                onClick={() => autofill('pasien@rara.local', 'pasien123')}
+                onClick={() => handleDemoLogin('pasien@rara.local', 'pasien123', 'patient')}
                 className="flex items-center justify-between px-3 py-2 text-xs font-medium text-teal-800 bg-teal-50 hover:bg-teal-100 rounded-lg border border-teal-200 transition"
               >
                 <span className="flex items-center gap-1.5">
@@ -128,7 +157,7 @@ export default function Login() {
 
               <button
                 type="button"
-                onClick={() => autofill('apoteker@rara.local', 'apoteker123')}
+                onClick={() => handleDemoLogin('apoteker@rara.local', 'apoteker123', 'staff')}
                 className="flex items-center justify-between px-3 py-2 text-xs font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition"
               >
                 <span className="flex items-center gap-1.5">
@@ -140,7 +169,7 @@ export default function Login() {
 
               <button
                 type="button"
-                onClick={() => autofill('admin@rara.local', 'admin123')}
+                onClick={() => handleDemoLogin('admin@rara.local', 'admin123', 'staff')}
                 className="flex items-center justify-between px-3 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg border border-slate-200 transition"
               >
                 <span className="flex items-center gap-1.5">

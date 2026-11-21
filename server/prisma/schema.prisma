@@ -13,6 +13,11 @@ enum Role {
   ADMIN
 }
 
+enum StudyGroup {
+  INTERVENTION
+  CONTROL
+}
+
 enum DoseStatus {
   PENDING
   TAKEN
@@ -20,47 +25,97 @@ enum DoseStatus {
   MISSED
 }
 
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ServiceRequestStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
 model User {
-  id           String   @id @default(cuid())
-  role         Role     @default(PATIENT)
-  name         String
-  email        String?  @unique
-  phone        String?  @unique
-  passwordHash String
-  locale       String   @default("id")
-  timezone     String   @default("Asia/Jakarta")
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(cuid())
+  role          Role     @default(PATIENT)
+  name          String
+  email         String?  @unique
+  phone         String?  @unique
+  passwordHash  String
+  locale        String   @default("id")
+  timezone      String   @default("Asia/Jakarta")
+  whatsappOptIn Boolean  @default(true)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   patient           Patient?           @relation("PatientUser")
+  pharmacistProfile PharmacistProfile?
   assignedPatients  Patient[]          @relation("AssignedPharmacist")
   messages          Message[]
   pushSubscriptions PushSubscription[]
+  followUpsAuthored PatientFollowUp[]  @relation("FollowUpPharmacist")
+  serviceRequests   ServiceRequest[]   @relation("ServicePharmacist")
+  whatsappLogs      WhatsAppLog[]
+  auditLogs         AuditLog[]
+}
+
+model PharmacistProfile {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  straNumber         String?
+  sipaNumber         String?
+  workplace          String?
+  specialization     String?
+  yearsExperience    Int?
+  bioId              String?
+  bioEn              String?
+  verificationStatus VerificationStatus @default(PENDING)
+  verifiedAt         DateTime?
+  verifiedById       String?
+  verificationNote   String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 }
 
 model Patient {
-  id           String    @id @default(cuid())
-  userId       String    @unique
-  user         User      @relation("PatientUser", fields: [userId], references: [id], onDelete: Cascade)
-  pharmacistId String?
-  pharmacist   User?     @relation("AssignedPharmacist", fields: [pharmacistId], references: [id], onDelete: SetNull)
+  id                String     @id @default(cuid())
+  userId            String     @unique
+  user              User       @relation("PatientUser", fields: [userId], references: [id], onDelete: Cascade)
+  pharmacistId      String?
+  pharmacist        User?      @relation("AssignedPharmacist", fields: [pharmacistId], references: [id], onDelete: SetNull)
   /// Pseudonymous participant code for research exports (e.g. P-001)
-  studyCode    String?   @unique
-  dateOfBirth  DateTime?
-  gender       String?
-  address      String?
-  diagnosis    String?
-  allergies    String?
+  studyCode         String?    @unique
+  dateOfBirth       DateTime?
+  gender            String?
+  address           String?
+  diagnosis         String?
+  allergies         String?
+  /// Estimated due date used to calculate gestational age in the care dashboard.
+  estimatedDueDate  DateTime?
+  studyGroup        StudyGroup @default(INTERVENTION)
+  riskFactors       String?
+  baselineSystolic  Int?
+  baselineDiastolic Int?
+  /// Date the participant confirmed the study information and consent statement.
+  consentedAt       DateTime?
   /// Internal pharmacist notes (never shown to the patient)
-  notes        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  notes             String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
 
-  medications Medication[]
-  doseLogs    DoseLog[]
-  messages    Message[]
-  responses   QuestionnaireResponse[]
+  medications     Medication[]
+  doseLogs        DoseLog[]
+  messages        Message[]
+  responses       QuestionnaireResponse[]
+  bloodPressures  BloodPressureLog[]
+  followUps       PatientFollowUp[]
+  serviceRequests ServiceRequest[]
+  whatsappLogs    WhatsAppLog[]
 }
 
 model Medication {
@@ -175,4 +230,119 @@ model QuestionnaireResponse {
   createdAt       DateTime      @default(now())
 
   @@index([patientId, createdAt])
+}
+
+model BloodPressureLog {
+  id         String   @id @default(cuid())
+  patientId  String
+  patient    Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  systolic   Int
+  diastolic  Int
+  pulse      Int?
+  measuredAt DateTime @default(now())
+  note       String?
+  source     String   @default("SELF")
+  createdAt  DateTime @default(now())
+
+  @@index([patientId, measuredAt])
+}
+
+model PharmacyService {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  category        String   @default("TELEPHARMACY")
+  nameId          String
+  nameEn          String
+  descriptionId   String
+  descriptionEn   String
+  durationMinutes Int      @default(30)
+  priceIDR        Int      @default(0)
+  icon            String   @default("Stethoscope")
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  requests ServiceRequest[]
+}
+
+model ServiceRequest {
+  id              String               @id @default(cuid())
+  patientId       String
+  patient         Patient              @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  serviceId       String
+  service         PharmacyService      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  pharmacistId    String?
+  pharmacist      User?                @relation("ServicePharmacist", fields: [pharmacistId], references: [id], onDelete: SetNull)
+  preferredDate   DateTime?
+  complaint       String?
+  status          ServiceRequestStatus @default(PENDING)
+  pharmacistReply String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([patientId, createdAt])
+  @@index([status, createdAt])
+}
+
+model PatientFollowUp {
+  id                String    @id @default(cuid())
+  patientId         String
+  patient           Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  pharmacistId      String
+  pharmacist        User      @relation("FollowUpPharmacist", fields: [pharmacistId], references: [id], onDelete: Cascade)
+  type              String    @default("PTO_REPORT")
+  subjective        String?
+  objective         String?
+  assessment        String?
+  plan              String
+  drpCategory       String    @default("NONE")
+  recommendation    String?
+  adherenceRate     Float?
+  latestBp          String?
+  nextFollowUpDate  DateTime?
+  sentViaWhatsApp   Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([patientId, createdAt])
+}
+
+model WhatsAppLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  patientId  String?
+  patient    Patient? @relation(fields: [patientId], references: [id], onDelete: SetNull)
+  phone      String
+  direction  String   @default("OUTBOUND")
+  category   String   @default("DOSE_REMINDER")
+  message    String
+  status     String   @default("DELIVERED")
+  provider   String   @default("SIMULATOR")
+  externalId String?
+  createdAt  DateTime @default(now())
+
+  @@index([patientId, createdAt])
+  @@index([createdAt])
+}
+
+model SystemConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  actorName  String
+  actorRole  String
+  action     String
+  entityType String
+  entityId   String?
+  details    String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
 }

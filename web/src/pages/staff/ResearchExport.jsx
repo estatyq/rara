@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileSpreadsheet, Download, ShieldCheck, Users, Pill, ClipboardList, MessageSquare, Check } from 'lucide-react';
+import { FileSpreadsheet, Download, ShieldCheck, Users, Pill, ClipboardList, MessageSquare, Check, HeartPulse } from 'lucide-react';
 import { api } from '../../api/client';
 import { useLanguage } from '../../i18n/LanguageContext';
 
@@ -23,9 +23,16 @@ export default function ResearchExport() {
     {
       id: 'patients',
       title: 'Dataset Partisipan Pasien (patients.csv)',
-      desc: 'Berisi kode studi, demografi (usia, gender), diagnosis klinis, riwayat alergi, serta rekapitulasi persentase kepatuhan 7 hari dan 30 hari.',
+      desc: 'Kode studi, kelompok intervensi/kontrol, demografi, HPL, faktor risiko preeklampsia, tekanan darah awal, kepatuhan 7/30 hari, dan proporsi tekanan darah terkontrol.',
       icon: Users,
       color: 'teal',
+    },
+    {
+      id: 'blood-pressure',
+      title: 'Log Tekanan Darah (blood-pressure.csv)',
+      desc: 'Seluruh pengukuran sistolik, diastolik, nadi, MAP, klasifikasi, status <140/90 mmHg, sumber mandiri/klinik, dan catatan untuk analisis luaran.',
+      icon: HeartPulse,
+      color: 'rose',
     },
     {
       id: 'doses',
@@ -33,6 +40,13 @@ export default function ResearchExport() {
       desc: 'Setiap butir jadwal minum obat, jam terjadwal, status (diminum/lewat/lupa), jam konfirmasi, serta deviasi keterlambatan dalam menit.',
       icon: Pill,
       color: 'emerald',
+    },
+    {
+      id: 'follow-ups',
+      title: 'Laporan Pemantauan Farmakoterapi / PTO & Tindak Lanjut (follow-ups.csv)',
+      desc: 'Seluruh rekam evaluasi SOAP (Subjective, Objective, Assessment, Plan), kategori masalah terapi obat (DRP), rekomendasi apoteker, dan jadwal tindak lanjut.',
+      icon: FileSpreadsheet,
+      color: 'teal',
     },
     {
       id: 'responses',

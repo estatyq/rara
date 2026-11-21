@@ -10,16 +10,75 @@ const TZ = 'Asia/Jakarta';
 
 async function upsertUser({ email, password, ...data }) {
   const passwordHash = await bcrypt.hash(password, 10);
-  return prisma.user.upsert({ where: { email }, update: {}, create: { email, passwordHash, ...data } });
+  return prisma.user.upsert({
+    where: { email },
+    update: { passwordHash, ...data },
+    create: { email, passwordHash, ...data },
+  });
 }
 
 async function main() {
-  const admin = await upsertUser({ email: 'admin@rara.local', password: 'admin123', name: 'Admin Peneliti', role: 'ADMIN' });
+  const admin = await upsertUser({ email: 'admin@rara.local', password: 'admin123', name: 'Admin Sistem Farmasi', phone: '+628110000100', role: 'ADMIN' });
   const pharmacist = await upsertUser({
     email: 'apoteker@rara.local',
     password: 'apoteker123',
-    name: 'apt. Rara Ganie',
+    phone: '+6281299887766',
+    name: 'Rabiatul Adawiah, S.Farm., Apt.',
     role: 'PHARMACIST',
+  });
+  const secondPharmacist = await upsertUser({
+    email: 'apoteker2@rara.local',
+    password: 'apoteker123',
+    phone: '+6281355667788',
+    name: 'apt. Hendra Wijaya, S.Farm.',
+    role: 'PHARMACIST',
+  });
+
+  await prisma.pharmacistProfile.upsert({
+    where: { userId: pharmacist.id },
+    update: {
+      straNumber: '19960512/STRA-UNHAS/2021/28491',
+      sipaNumber: '503/SIPA.042/DINKES-MKS/2023',
+      workplace: 'Instalasi Farmasi Klinis RSIA & Puskesmas Mitra',
+      specialization: 'Farmasi Klinis, Kehamilan Risiko Tinggi & Preeklampsia',
+      yearsExperience: 6,
+      bioId: 'Apoteker klinis penanggung jawab pemantauan farmakoterapi ibu hamil, hipertensi kehamilan, dan edukasi kepatuhan terapi.',
+      bioEn: 'Lead clinical pharmacist specializing in maternal pharmacotherapy monitoring, gestational hypertension, and adherence counseling.',
+      verificationStatus: 'VERIFIED',
+      verifiedAt: new Date(),
+      verifiedById: admin.id,
+      verificationNote: 'Kredensial STRA dan SIPA terverifikasi resmi oleh Administrator.',
+    },
+    create: {
+      userId: pharmacist.id,
+      straNumber: '19960512/STRA-UNHAS/2021/28491',
+      sipaNumber: '503/SIPA.042/DINKES-MKS/2023',
+      workplace: 'Instalasi Farmasi Klinis RSIA & Puskesmas Mitra',
+      specialization: 'Farmasi Klinis, Kehamilan Risiko Tinggi & Preeklampsia',
+      yearsExperience: 6,
+      bioId: 'Apoteker klinis penanggung jawab pemantauan farmakoterapi ibu hamil, hipertensi kehamilan, dan edukasi kepatuhan terapi.',
+      bioEn: 'Lead clinical pharmacist specializing in maternal pharmacotherapy monitoring, gestational hypertension, and adherence counseling.',
+      verificationStatus: 'VERIFIED',
+      verifiedAt: new Date(),
+      verifiedById: admin.id,
+      verificationNote: 'Kredensial STRA dan SIPA terverifikasi resmi oleh Administrator.',
+    },
+  });
+
+  await prisma.pharmacistProfile.upsert({
+    where: { userId: secondPharmacist.id },
+    update: {},
+    create: {
+      userId: secondPharmacist.id,
+      straNumber: '19981104/STRA-UI/2024/11902',
+      sipaNumber: '503/SIPA.118/DINKES/2025',
+      workplace: 'Klinik Pratama & Apotek Sehat Bersama',
+      specialization: 'Pelayanan Informasi Obat & Konseling Terapi Kronis',
+      yearsExperience: 3,
+      bioId: 'Apoteker layanan telefarmasi dan konseling jadwal pengobatan pasien.',
+      bioEn: 'Telepharmacy and medication schedule counseling pharmacist.',
+      verificationStatus: 'PENDING',
+    },
   });
 
   for (const a of articles) {
@@ -36,42 +95,49 @@ async function main() {
     email: 'pasien@rara.local',
     password: 'pasien123',
     phone: '+6281234567890',
-    name: 'Budi Santoso',
+    name: 'Aisyah Rahmadani',
     role: 'PATIENT',
     timezone: TZ,
   });
-  let patient = await prisma.patient.findUnique({ where: { userId: patientUser.id } });
-  if (!patient) {
-    patient = await prisma.patient.create({
-      data: {
-        userId: patientUser.id,
-        pharmacistId: pharmacist.id,
-        studyCode: 'P-001',
-        dateOfBirth: DateTime.fromISO('1968-04-12', { zone: TZ }).toJSDate(),
-        gender: 'MALE',
-        address: 'Jl. Merdeka No. 10, Bandung',
-        diagnosis: 'Hipertensi, Diabetes melitus tipe 2',
-        allergies: 'Tidak ada',
-      },
-    });
-  }
+  const estimatedDueDate = DateTime.now().setZone(TZ).startOf('day').plus({ weeks: 8, days: 3 });
+  const patientData = {
+    pharmacistId: pharmacist.id,
+    studyCode: 'P-001',
+    dateOfBirth: DateTime.fromISO('1994-02-18', { zone: TZ }).toJSDate(),
+    gender: 'FEMALE',
+    address: 'Jl. Perintis Kemerdekaan, Makassar',
+    diagnosis: 'Kehamilan risiko tinggi, hipertensi kronis ringan',
+    allergies: 'Tidak ada alergi obat yang diketahui',
+    estimatedDueDate: estimatedDueDate.toJSDate(),
+    studyGroup: 'INTERVENTION',
+    riskFactors: 'Hipertensi kronis; riwayat preeklampsia pada kehamilan sebelumnya',
+    baselineSystolic: 136,
+    baselineDiastolic: 86,
+    consentedAt: DateTime.now().setZone(TZ).minus({ days: 14 }).toJSDate(),
+    notes: 'Peserta penelitian pemantauan apoteker melalui aplikasi. Perlu evaluasi kepatuhan dan tekanan darah setiap minggu.',
+  };
+  const patient = await prisma.patient.upsert({
+    where: { userId: patientUser.id },
+    update: patientData,
+    create: { userId: patientUser.id, ...patientData },
+  });
 
   const hasMeds = await prisma.medication.count({ where: { patientId: patient.id } });
   if (!hasMeds) {
     const start = DateTime.now().setZone(TZ).startOf('day').minus({ days: 14 });
-    const amlo = await prisma.article.findUnique({ where: { slug: 'amlodipin' } });
-    const metf = await prisma.article.findUnique({ where: { slug: 'metformin' } });
+    const aspirinArticle = await prisma.article.findUnique({ where: { slug: 'aspirin-dosis-rendah' } });
+    const calciumArticle = await prisma.article.findUnique({ where: { slug: 'kalsium-kehamilan' } });
     const meds = await Promise.all([
       prisma.medication.create({
         data: {
-          patientId: patient.id, name: 'Amlodipin', dosage: '5 mg', form: 'Tablet', instructions: 'Diminum pagi hari, sebelum atau sesudah makan',
-          times: ['07:00'], startDate: start.toJSDate(), createdAt: start.toJSDate(), articleId: amlo?.id, createdById: pharmacist.id,
+          patientId: patient.id, name: 'Aspirin dosis rendah', dosage: '80 mg', form: 'Tablet', instructions: 'Ikuti dosis dan waktu yang diresepkan. Jangan mengubah dosis sendiri.',
+          times: ['07:00'], startDate: start.toJSDate(), createdAt: start.toJSDate(), articleId: aspirinArticle?.id, createdById: pharmacist.id,
         },
       }),
       prisma.medication.create({
         data: {
-          patientId: patient.id, name: 'Metformin', dosage: '500 mg', form: 'Tablet', instructions: 'Diminum bersama atau sesudah makan',
-          times: ['07:00', '19:00'], startDate: start.toJSDate(), createdAt: start.toJSDate(), articleId: metf?.id, createdById: pharmacist.id,
+          patientId: patient.id, name: 'Suplemen kalsium', dosage: '500 mg', form: 'Tablet', instructions: 'Ikuti rekomendasi petugas kesehatan dan catat keluhan yang muncul.',
+          times: ['07:00', '19:00'], startDate: start.toJSDate(), createdAt: start.toJSDate(), articleId: calciumArticle?.id, createdById: pharmacist.id,
         },
       }),
     ]);
@@ -101,10 +167,263 @@ async function main() {
 
     await prisma.message.createMany({
       data: [
-        { patientId: patient.id, senderId: patientUser.id, body: 'Selamat pagi, apakah metformin boleh diminum sebelum makan?', createdAt: start.plus({ days: 3, hours: 8 }).toJSDate(), readAt: start.plus({ days: 3, hours: 9 }).toJSDate() },
-        { patientId: patient.id, senderId: pharmacist.id, body: 'Selamat pagi Pak Budi. Sebaiknya metformin diminum bersama atau segera sesudah makan untuk mengurangi keluhan lambung (mual, perut tidak nyaman).', createdAt: start.plus({ days: 3, hours: 9 }).toJSDate(), readAt: start.plus({ days: 3, hours: 10 }).toJSDate() },
-        { patientId: patient.id, senderId: patientUser.id, body: 'Baik, terima kasih Bu.', createdAt: start.plus({ days: 3, hours: 10 }).toJSDate() },
+        { patientId: patient.id, senderId: patientUser.id, body: 'Selamat pagi, kemarin tekanan darah saya 142/91. Apakah perlu saya catat lagi sore ini?', createdAt: start.plus({ days: 3, hours: 8 }).toJSDate(), readAt: start.plus({ days: 3, hours: 9 }).toJSDate() },
+        { patientId: patient.id, senderId: pharmacist.id, body: 'Selamat pagi Ibu Aisyah. Ya, silakan catat hasil pengukuran saat sedang tenang dan sertakan keluhan bila ada. Bila tekanan darah 160/110 atau muncul sakit kepala berat atau pandangan kabur, segera hubungi fasilitas kesehatan.', createdAt: start.plus({ days: 3, hours: 9 }).toJSDate(), readAt: start.plus({ days: 3, hours: 10 }).toJSDate() },
+        { patientId: patient.id, senderId: patientUser.id, body: 'Baik, terima kasih atas panduannya.', createdAt: start.plus({ days: 3, hours: 10 }).toJSDate() },
       ],
+    });
+  }
+
+  // Keep an existing demo database aligned with the pregnancy study without
+  // deleting dose history or other records created during manual testing.
+  const aspirinArticle = await prisma.article.findUnique({ where: { slug: 'aspirin-dosis-rendah' } });
+  const calciumArticle = await prisma.article.findUnique({ where: { slug: 'kalsium-kehamilan' } });
+  const legacyAspirin = await prisma.medication.findFirst({
+    where: { patientId: patient.id, name: 'Amlodipin' },
+  });
+  if (legacyAspirin) {
+    await prisma.medication.update({
+      where: { id: legacyAspirin.id },
+      data: {
+        name: 'Aspirin dosis rendah',
+        dosage: '80 mg',
+        form: 'Tablet',
+        instructions: 'Ikuti dosis dan waktu yang diresepkan. Jangan mengubah dosis sendiri.',
+        articleId: aspirinArticle?.id,
+      },
+    });
+  }
+  const legacyCalcium = await prisma.medication.findFirst({
+    where: { patientId: patient.id, name: 'Metformin' },
+  });
+  if (legacyCalcium) {
+    await prisma.medication.update({
+      where: { id: legacyCalcium.id },
+      data: {
+        name: 'Suplemen kalsium',
+        dosage: '500 mg',
+        form: 'Tablet',
+        instructions: 'Ikuti rekomendasi petugas kesehatan dan catat keluhan yang muncul.',
+        articleId: calciumArticle?.id,
+      },
+    });
+  }
+  await prisma.message.updateMany({
+    where: { patientId: patient.id, body: { contains: 'metformin', mode: 'insensitive' } },
+    data: { body: 'Selamat pagi, apakah suplemen kalsium saya sebaiknya dicatat bersama obat lain?' },
+  });
+  await prisma.message.updateMany({
+    where: { patientId: patient.id, body: { contains: 'lambung', mode: 'insensitive' } },
+    data: {
+      body: 'Selamat pagi Ibu Aisyah. Silakan catat semua obat dan suplemen beserta waktunya. Tanyakan kembali jika ada perubahan resep. Bila tekanan darah 160/110 atau muncul keluhan berat, segera hubungi fasilitas kesehatan.',
+    },
+  });
+
+  const bpCount = await prisma.bloodPressureLog.count({ where: { patientId: patient.id } });
+  if (!bpCount) {
+    const values = [
+      [142, 91, 88], [138, 88, 84], [136, 87, 82], [132, 84, 80], [128, 81, 79],
+      [130, 82, 81], [126, 79, 78], [124, 78, 76], [128, 80, 79], [122, 77, 75],
+    ];
+    await prisma.bloodPressureLog.createMany({
+      data: values.map(([systolic, diastolic, pulse], index) => {
+        const daysAgo = values.length - index - 1;
+        return {
+          patientId: patient.id,
+          systolic,
+          diastolic,
+          pulse,
+          measuredAt: DateTime.now().setZone(TZ).startOf('day').minus({ days: daysAgo }).set({ hour: 8, minute: 15 }).toJSDate(),
+          note: index === 0 ? 'Duduk tenang, diukur sebelum sarapan.' : null,
+          source: index % 4 === 0 ? 'CLINIC' : 'SELF',
+        };
+      }),
+    });
+  }
+
+  const todayStart = DateTime.now().setZone(TZ).startOf('day');
+  const todayDoses = await prisma.doseLog.findMany({
+    where: {
+      patientId: patient.id,
+      scheduledAt: {
+        gte: todayStart.toJSDate(),
+        lt: todayStart.plus({ days: 1 }).toJSDate(),
+      },
+    },
+    orderBy: { scheduledAt: 'asc' },
+  });
+  if (todayDoses.length >= 2) {
+    await prisma.doseLog.update({
+      where: { id: todayDoses[0].id },
+      data: {
+        status: 'TAKEN',
+        takenAt: new Date(+todayDoses[0].scheduledAt + 12 * 60000),
+      },
+    });
+    await prisma.doseLog.update({
+      where: { id: todayDoses[1].id },
+      data: { status: 'SKIPPED', takenAt: null },
+    });
+  }
+
+  // Seed Pharmacy Services Catalog
+  const servicesCatalog = [
+    {
+      code: 'SVC-PTO',
+      category: 'PTO',
+      nameId: 'Pemantauan Terapi Obat (PTO) Ibu Hamil & Preeklampsia',
+      nameEn: 'Maternal & Preeclampsia Pharmacotherapy Monitoring (PTO)',
+      descriptionId: 'Evaluasi menyeluruh efektivitas terapi, kepatuhan minum obat (aspirin dosis rendah, kalsium, antihipertensi), dan pemantauan tren tekanan darah oleh apoteker klinis.',
+      descriptionEn: 'Comprehensive evaluation of therapy effectiveness, medication adherence (low-dose aspirin, calcium, antihypertensives), and blood pressure trend monitoring by a clinical pharmacist.',
+      durationMinutes: 30,
+      priceIDR: 0,
+      icon: 'HeartPulse',
+      active: true,
+    },
+    {
+      code: 'SVC-TELE',
+      category: 'TELEPHARMACY',
+      nameId: 'Konsultasi Telefarmasi & Informasi Obat (PIO)',
+      nameEn: 'Telepharmacy Consultation & Drug Information Service',
+      descriptionId: 'Konsultasi langsung via chat atau WhatsApp bersama apoteker terverifikasi mengenai dosis, aturan pakai, interaksi obat, dan keamanan obat selama kehamilan.',
+      descriptionEn: 'Direct consultation via chat or WhatsApp with a verified pharmacist regarding dosage, administration rules, drug interactions, and pregnancy medication safety.',
+      durationMinutes: 20,
+      priceIDR: 0,
+      icon: 'MessageSquare',
+      active: true,
+    },
+    {
+      code: 'SVC-RECON',
+      category: 'RECONCILIATION',
+      nameId: 'Rekonsiliasi & Penyusunan Jadwal Pengobatan',
+      nameEn: 'Medication Reconciliation & Schedule Optimization',
+      descriptionId: 'Penyelarasan daftar obat resep dokter, suplemen kehamilan, dan pengaturan jam alarm pengingat agar tidak terjadi duplikasi atau interaksi antar obat (misal jeda kalsium & zat besi).',
+      descriptionEn: 'Alignment of prescribed medications, prenatal supplements, and alarm schedules to prevent duplication or absorption interactions (e.g., spacing calcium and iron).',
+      durationMinutes: 25,
+      priceIDR: 0,
+      icon: 'Calendar',
+      active: true,
+    },
+    {
+      code: 'SVC-COUNSEL',
+      category: 'COUNSELING',
+      nameId: 'Konseling Kepatuhan & Penanganan Efek Samping (MESO)',
+      nameEn: 'Adherence Counseling & Adverse Drug Reaction Monitoring',
+      descriptionId: 'Pendampingan khusus bagi pasien yang mengalami kendala lupa minum obat, mual, atau keluhan efek samping terapi untuk dicarikan solusi klinis.',
+      descriptionEn: 'Dedicated guidance for patients experiencing missed doses, nausea, or side effects to identify safe clinical solutions.',
+      durationMinutes: 30,
+      priceIDR: 0,
+      icon: 'ShieldCheck',
+      active: true,
+    },
+    {
+      code: 'SVC-HOME',
+      category: 'HOME_CARE',
+      nameId: 'Pendampingan Farmasi Keluarga (Home Pharmacy Care)',
+      nameEn: 'Home Pharmacy Care & Blood Pressure Review',
+      descriptionId: 'Layanan tindak lanjut berkala untuk memantau penyimpanan obat di rumah, teknik pengukuran tekanan darah mandiri yang tepat, dan dukungan keluarga.',
+      descriptionEn: 'Periodic follow-up service to review home medication storage, proper self-blood-pressure measurement technique, and family support.',
+      durationMinutes: 45,
+      priceIDR: 0,
+      icon: 'Stethoscope',
+      active: true,
+    },
+  ];
+
+  const createdServices = [];
+  for (const s of servicesCatalog) {
+    const svc = await prisma.pharmacyService.upsert({
+      where: { code: s.code },
+      update: s,
+      create: s,
+    });
+    createdServices.push(svc);
+  }
+
+  // Seed a sample ServiceRequest
+  const existingReqCount = await prisma.serviceRequest.count({ where: { patientId: patient.id } });
+  if (!existingReqCount && createdServices.length > 0) {
+    await prisma.serviceRequest.create({
+      data: {
+        patientId: patient.id,
+        serviceId: createdServices[0].id,
+        pharmacistId: pharmacist.id,
+        preferredDate: DateTime.now().setZone(TZ).plus({ days: 2 }).set({ hour: 10, minute: 0 }).toJSDate(),
+        complaint: 'Ingin evaluasi jadwal minum kalsium dan aspirin serta tinjauan hasil tekanan darah minggu ini.',
+        status: 'CONFIRMED',
+        pharmacistReply: 'Jadwal evaluasi PTO telah dikonfirmasi. Pastikan mencatat tekanan darah pagi sebelum sesi konsultasi.',
+      },
+    });
+  }
+
+  // Seed a sample Pharmacotherapy Follow-Up / PTO Report
+  const existingFollowUpCount = await prisma.patientFollowUp.count({ where: { patientId: patient.id } });
+  if (!existingFollowUpCount) {
+    await prisma.patientFollowUp.create({
+      data: {
+        patientId: patient.id,
+        pharmacistId: pharmacist.id,
+        type: 'PTO_REPORT',
+        subjective: 'Pasien melaporkan tidak ada sakit kepala hebat atau gangguan penglihatan. Kadang lupa dosis kalsium malam hari bila kelelahan.',
+        objective: 'TD rata-rata 7 hari terakhir: 126/79 mmHg (Terkontrol <140/90 mmHg). Kepatuhan minum obat 30 hari ~85%.',
+        assessment: 'Terapi profilaksis preeklampsia (Aspirin 80 mg 1x1 & Kalsium 500 mg 2x1) efektif dan ditoleransi baik. Ditemukan risiko ketidakpatuhan ringan pada dosis malam.',
+        plan: '1. Lanjutkan Aspirin 80 mg setiap pagi pukul 07:00 setelah sarapan.\n2. Lanjutkan Suplemen Kalsium 500 mg pukul 07:00 dan 19:00.\n3. Aktifkan pengingat otomatis WhatsApp & Push Notification untuk jadwal pukul 19:00.',
+        drpCategory: 'NON_ADHERENCE',
+        recommendation: 'Minum tablet kalsium malam segera setelah makan malam dan gunakan fitur konfirmasi cepat pada pengingat WhatsApp/aplikasi.',
+        adherenceRate: 85.0,
+        latestBp: '122/77 mmHg',
+        nextFollowUpDate: DateTime.now().setZone(TZ).plus({ days: 7 }).toJSDate(),
+        sentViaWhatsApp: true,
+      },
+    });
+  }
+
+  // Seed sample WhatsApp Logs
+  const waCount = await prisma.whatsAppLog.count();
+  if (!waCount) {
+    await prisma.whatsAppLog.createMany({
+      data: [
+        {
+          userId: patientUser.id,
+          patientId: patient.id,
+          phone: '+6281234567890',
+          direction: 'OUTBOUND',
+          category: 'DOSE_REMINDER',
+          message: '[Pengingat Obat Apoteku] Halo Aisyah Rahmadani, saatnya minum obat Anda: *Aspirin dosis rendah* (80 mg). Silakan konfirmasi di aplikasi setelah diminum.',
+          status: 'DELIVERED',
+          provider: 'SIMULATOR',
+          externalId: 'wa-seed-101',
+        },
+        {
+          userId: patientUser.id,
+          patientId: patient.id,
+          phone: '+6281234567890',
+          direction: 'OUTBOUND',
+          category: 'FOLLOW_UP',
+          message: '[Tindak Lanjut Apoteker Apoteku] Halo Aisyah Rahmadani, Apoteker Rabiatul Adawiah, S.Farm., Apt. telah mencatat evaluasi terapi obat Anda. Rencana Terapi: Lanjutkan Aspirin 80 mg & Kalsium 500 mg sesuai jadwal.',
+          status: 'DELIVERED',
+          provider: 'SIMULATOR',
+          externalId: 'wa-seed-102',
+        },
+      ],
+    });
+  }
+
+  // Seed System Config
+  const defaultConfigs = [
+    ['whatsapp_enabled', 'true'],
+    ['whatsapp_provider', 'SIMULATOR'],
+    ['whatsapp_api_url', 'https://api.fonnte.com/send'],
+    ['whatsapp_sender_number', '+6281299887766'],
+    ['whatsapp_auto_dose_reminder', 'true'],
+    ['whatsapp_auto_bp_alert', 'true'],
+    ['platform_owner', 'Rabiatul Adawiah, S.Farm., Apt.'],
+  ];
+  for (const [key, value] of defaultConfigs) {
+    await prisma.systemConfig.upsert({
+      where: { key },
+      update: {},
+      create: { key, value },
     });
   }
 
@@ -112,7 +431,6 @@ async function main() {
   console.log('  Admin:      admin@rara.local / admin123');
   console.log('  Pharmacist: apoteker@rara.local / apoteker123');
   console.log('  Patient:    pasien@rara.local (or 081234567890) / pasien123');
-  void admin;
 }
 
 main()

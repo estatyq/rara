@@ -13,6 +13,7 @@ export default function Register() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [consentAccepted, setConsentAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -20,6 +21,10 @@ export default function Register() {
     e.preventDefault();
     if (!name || (!phone && !email) || !password) {
       setError('Mohon lengkapi nama, kontak (HP atau Email), dan password.');
+      return;
+    }
+    if (!consentAccepted) {
+      setError('Persetujuan peserta diperlukan sebelum akun dibuat.');
       return;
     }
     setError('');
@@ -32,6 +37,7 @@ export default function Register() {
         password,
         locale: lang,
         timezone: 'Asia/Jakarta',
+        consentAccepted: true,
       });
       navigate('/');
     } catch (err) {
@@ -83,7 +89,7 @@ export default function Register() {
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Contoh: Budi Santoso"
+                placeholder="Contoh: Aisyah Rahmadani"
                 className="mt-1 block w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white"
               />
             </div>
@@ -127,6 +133,19 @@ export default function Register() {
                 className="mt-1 block w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white"
               />
             </div>
+
+            <label className="flex items-start gap-2.5 rounded-xl border border-teal-200 bg-teal-50/60 p-3 text-xs leading-relaxed text-slate-700">
+              <input
+                type="checkbox"
+                required
+                checked={consentAccepted}
+                onChange={(event) => setConsentAccepted(event.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+              />
+              <span>
+                Saya telah menerima penjelasan penelitian dan secara sukarela menyetujui penggunaan data obat serta tekanan darah saya untuk pemantauan dan analisis penelitian yang telah dianonimkan.
+              </span>
+            </label>
 
             <button
               type="submit"

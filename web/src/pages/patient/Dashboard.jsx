@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, X, Clock, MessageSquare, AlertCircle, ShieldAlert, Sparkles, BookOpen } from 'lucide-react';
+import { Check, X, Clock, MessageSquare, AlertCircle, ShieldAlert, Sparkles, BookOpen, Activity, ArrowRight, ClipboardList, Stethoscope, FileText } from 'lucide-react';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useSocket } from '../../context/SocketContext';
 import AdherenceRing from '../../components/AdherenceRing';
+import { dateTimeInputInZone } from '../../utils/date';
 
 export default function PatientDashboard() {
   const { user } = useAuth();
@@ -14,29 +15,32 @@ export default function PatientDashboard() {
 
   const [doses, setDoses] = useState([]);
   const [adherence, setAdherence] = useState(null);
+  const [bloodPressure, setBloodPressure] = useState(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [submittingId, setSubmittingId] = useState(null);
 
   const loadData = useCallback(async () => {
     try {
-      const today = new Date().toISOString().slice(0, 10);
-      const [dosesRes, adhRes, unreadRes] = await Promise.all([
+      const today = dateTimeInputInZone(new Date(), user.timezone).slice(0, 10);
+      const [dosesRes, adhRes, bpRes, messagesRes] = await Promise.all([
         api.getDoses('me', today, today),
         api.getAdherence('me', 30),
-        api.getMessages('me', 1).catch(() => ({ messages: [] })),
+        api.getBloodPressures('me', 30, 1).catch(() => ({ summary: null })),
+        api.getMessages('me', 50).catch(() => ({ messages: [] })),
       ]);
       setDoses(dosesRes.doses || []);
       setAdherence(adhRes);
-      // Check unread
-      const unreadCount = (dosesRes.doses || []).length;
-      void unreadCount;
+      setBloodPressure(bpRes.summary || null);
+      setUnreadMessages(
+        (messagesRes.messages || []).filter((message) => !message.readAt && message.sender?.role !== 'PATIENT').length,
+      );
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user.timezone]);
 
   useEffect(() => {
     loadData();
@@ -49,19 +53,34 @@ export default function PatientDashboard() {
     socket.on('dose:updated', handleUpdate);
     socket.on('dose:due', handleUpdate);
     socket.on('medications:changed', handleUpdate);
+    socket.on('blood-pressure:changed', handleUpdate);
     socket.on('message:new', () => setUnreadMessages((prev) => prev + 1));
 
     return () => {
       socket.off('dose:updated', handleUpdate);
       socket.off('dose:due', handleUpdate);
       socket.off('medications:changed', handleUpdate);
+      socket.off('blood-pressure:changed', handleUpdate);
     };
   }, [socket, loadData]);
 
-  const handleStatusChange = async (doseId, status) => {
+  const handleStatusChange = async (doseId, status, note) => {
     setSubmittingId(doseId);
     try {
-      await api.updateDoseStatus(doseId, status);
+      let finalNote = note;
+      if (status === 'SKIPPED' && finalNote === undefined) {
+        finalNote = window.prompt(
+          lang === 'id'
+            ? 'Alasan melewati dosis ini (opsional, misal: mual atau lupa):'
+            : 'Reason for skipping this dose (optional, e.g. nausea):',
+          '',
+        );
+        if (finalNote === null) {
+          setSubmittingId(null);
+          return;
+        }
+      }
+      await api.updateDoseStatus(doseId, status, finalNote || undefined);
       await loadData();
     } catch (err) {
       alert(err.message || 'Gagal memperbarui status');
@@ -79,7 +98,18 @@ export default function PatientDashboard() {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: user.timezone,
   }).format(new Date());
+
+  const gestationalAge = (() => {
+    if (!user.patient?.estimatedDueDate) return null;
+    const daysRemaining = Math.ceil((new Date(user.patient.estimatedDueDate) - new Date()) / 86400000);
+    const daysPregnant = Math.max(0, Math.min(294, 280 - daysRemaining));
+    return {
+      weeks: Math.floor(daysPregnant / 7),
+      days: daysPregnant % 7,
+    };
+  })();
 
   if (loading) {
     return (
@@ -103,9 +133,14 @@ export default function PatientDashboard() {
           </h1>
           <p className="text-teal-100 text-sm mt-1 max-w-lg">
             {lang === 'id'
-              ? 'Pastikan pengobatan Anda diminum tepat waktu untuk hasil terapi yang optimal.'
-              : 'Remember to take your medications on time to protect your health and therapy.'}
+              ? 'Tetap rutin minum obat dan catat tekanan darah untuk membantu pemantauan kehamilan Anda.'
+              : 'Keep taking your medicines and recording blood pressure to support your pregnancy monitoring.'}
           </p>
+          {gestationalAge && (
+            <span className="inline-flex mt-3 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-semibold text-teal-50">
+              {lang === 'id' ? 'Usia kehamilan' : 'Gestational age'}: {gestationalAge.weeks} {lang === 'id' ? 'minggu' : 'weeks'} {gestationalAge.days} {lang === 'id' ? 'hari' : 'days'}
+            </span>
+          )}
         </div>
 
         {/* Adherence Mini Card */}
@@ -160,6 +195,7 @@ export default function PatientDashboard() {
                     hour: '2-digit',
                     minute: '2-digit',
                     hour12: false,
+                    timeZone: user.timezone,
                   }).format(new Date(dose.scheduledAt));
 
                   const isTaken = dose.status === 'TAKEN';
@@ -181,9 +217,9 @@ export default function PatientDashboard() {
                           : 'bg-white border-slate-200 hover:border-teal-300 shadow-sm'
                       }`}
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="inline-flex items-center gap-1 font-bold text-sm px-2 py-0.5 rounded-md bg-slate-100 text-slate-800">
                               <Clock className="w-3 h-3 text-slate-500" />
                               {scheduledTime}
@@ -212,7 +248,7 @@ export default function PatientDashboard() {
                         </div>
 
                         {/* Status / Action Buttons */}
-                        <div className="flex items-center space-x-2 shrink-0">
+                        <div className="flex items-center justify-end gap-2 shrink-0 w-full sm:w-auto pt-1 sm:pt-0 border-t border-slate-100 sm:border-0">
                           {isPending && (
                             <>
                               <button
@@ -330,6 +366,80 @@ export default function PatientDashboard() {
             )}
           </div>
 
+          <Link
+            to="/blood-pressure"
+            className="block bg-white rounded-2xl p-5 border border-slate-200 hover:border-rose-300 shadow-sm transition group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                  <Activity className="w-4.5 h-4.5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    {lang === 'id' ? 'Tekanan Darah' : 'Blood Pressure'}
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    {lang === 'id' ? 'Catat hasil pengukuran hari ini' : 'Record today’s reading'}
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-rose-500 group-hover:translate-x-0.5 transition" />
+            </div>
+            {bloodPressure?.latest ? (
+              <div className="mt-4 flex items-end justify-between">
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-2xl font-extrabold text-slate-900">
+                    {bloodPressure.latest.systolic}/{bloodPressure.latest.diastolic}
+                  </span>
+                  <span className="text-[11px] text-slate-400">mmHg</span>
+                </div>
+                <span className={`text-[10px] font-bold rounded-full px-2 py-1 border ${
+                  bloodPressure.latest.category === 'NORMAL'
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : bloodPressure.latest.category === 'LOW'
+                      ? 'bg-sky-50 text-sky-700 border-sky-200'
+                      : bloodPressure.latest.category === 'ELEVATED'
+                        ? 'bg-amber-50 text-amber-700 border-amber-200'
+                        : 'bg-rose-50 text-rose-700 border-rose-200'
+                }`}>
+                  {bloodPressure.latest.controlled
+                    ? (lang === 'id' ? 'Terkontrol' : 'Controlled')
+                    : (lang === 'id' ? 'Perlu ditinjau' : 'Review')}
+                </span>
+              </div>
+            ) : (
+              <p className="mt-4 text-xs text-slate-400">
+                {lang === 'id' ? 'Belum ada pengukuran tersimpan.' : 'No readings saved yet.'}
+              </p>
+            )}
+          </Link>
+
+          {/* Quick Pharmacy Services Link */}
+          <Link
+            to="/services"
+            className="block bg-white rounded-2xl p-5 border border-slate-200 hover:border-teal-300 shadow-sm transition group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
+                  <Stethoscope className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 group-hover:text-teal-700 transition">
+                    {lang === 'id' ? 'Layanan Kefarmasian' : 'Pharmacy Services'}
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    {lang === 'id'
+                      ? 'Ajukan evaluasi PTO, rekonsiliasi jadwal obat, atau telefarmasi'
+                      : 'Request PTO evaluation, schedule reconciliation, or telepharmacy'}
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-teal-600 transition" />
+            </div>
+          </Link>
+
           {/* Quick Chat with Pharmacist */}
           <Link
             to="/chat"
@@ -364,9 +474,31 @@ export default function PatientDashboard() {
                   {t.patient.educationTitle}
                 </h4>
                 <p className="text-xs text-slate-500">
-                  Panduan obat Amlodipin, Metformin, & tips kesehatan.
+                  Panduan kehamilan risiko tinggi, tekanan darah, dan obat yang diresepkan.
                 </p>
               </div>
+            </div>
+          </Link>
+
+          <Link
+            to="/surveys"
+            className="block bg-white rounded-2xl p-4 border border-slate-200 hover:border-indigo-300 shadow-sm transition group"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <ClipboardList className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">
+                    {lang === 'id' ? 'Kuesioner Penelitian' : 'Study questionnaires'}
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    {lang === 'id' ? 'Bantu peneliti memahami pengalaman Anda' : 'Help researchers understand your experience'}
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-500" />
             </div>
           </Link>
         </div>

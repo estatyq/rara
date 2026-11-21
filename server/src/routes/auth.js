@@ -34,6 +34,7 @@ const registerSchema = z
     password: z.string().min(6).max(100),
     locale: z.enum(['id', 'en']).default('id'),
     timezone: z.string().refine(isValidTimezone).default('Asia/Jakarta'),
+    consentAccepted: z.literal(true),
   })
   .refine((d) => d.email || d.phone, { message: 'Email or phone is required', path: ['email'] });
 
@@ -48,9 +49,9 @@ router.post('/register', async (req, res) => {
       locale: data.locale,
       timezone: data.timezone,
       role: 'PATIENT',
-      patient: { create: {} },
+      patient: { create: { consentedAt: new Date() } },
     },
-    include: { patient: { select: { id: true } } },
+    include: { patient: { select: { id: true, studyCode: true, estimatedDueDate: true } } },
   });
   res.status(201).json({ token: signToken(user), user: publicUser(user) });
 });
@@ -60,7 +61,13 @@ const loginSchema = z.object({ login: z.string().trim().min(3), password: z.stri
 router.post('/login', async (req, res) => {
   const { login, password } = loginSchema.parse(req.body);
   const where = login.includes('@') ? { email: login.toLowerCase() } : { phone: normalizePhone(login) };
-  const user = await prisma.user.findUnique({ where, include: { patient: { select: { id: true } } } });
+  const user = await prisma.user.findUnique({
+    where,
+    include: {
+      patient: { select: { id: true, studyCode: true, estimatedDueDate: true, pharmacistId: true } },
+      pharmacistProfile: true,
+    },
+  });
   if (!user || !user.active || !(await bcrypt.compare(password, user.passwordHash))) {
     throw new HttpError(401, 'Invalid login or password');
   }
@@ -77,6 +84,7 @@ const updateMeSchema = z.object({
   phone: z.preprocess(emptyToUndef, phone.optional()),
   locale: z.enum(['id', 'en']).optional(),
   timezone: z.string().refine(isValidTimezone).optional(),
+  whatsappOptIn: z.boolean().optional(),
   currentPassword: z.string().optional(),
   newPassword: z.string().min(6).max(100).optional(),
 });
@@ -89,6 +97,7 @@ router.patch('/me', authenticate, async (req, res) => {
     phone: data.phone ? normalizePhone(data.phone) : undefined,
     locale: data.locale,
     timezone: data.timezone,
+    whatsappOptIn: data.whatsappOptIn,
   };
   if (data.newPassword) {
     if (!data.currentPassword || !(await bcrypt.compare(data.currentPassword, req.user.passwordHash))) {
@@ -99,7 +108,10 @@ router.patch('/me', authenticate, async (req, res) => {
   const user = await prisma.user.update({
     where: { id: req.user.id },
     data: update,
-    include: { patient: { select: { id: true } } },
+    include: {
+      patient: { select: { id: true, studyCode: true, estimatedDueDate: true, pharmacistId: true } },
+      pharmacistProfile: true,
+    },
   });
   if (data.timezone && data.timezone !== req.user.timezone && user.patient) {
     await rematerializePatient(user.patient.id);

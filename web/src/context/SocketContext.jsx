@@ -1,13 +1,50 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
 const SocketContext = createContext(null);
 
+export function playAlarmChime() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.16);
+      gain.gain.setValueAtTime(0.001, ctx.currentTime + idx * 0.16);
+      gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + idx * 0.16 + 0.04);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.16 + 0.28);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime + idx * 0.16);
+      osc.stop(ctx.currentTime + idx * 0.16 + 0.3);
+    });
+  } catch {
+    // Ignore if browser autoplay policy blocks audio before interaction
+  }
+}
+
 export function SocketProvider({ children }) {
   const { token, user } = useAuth();
   const [socket, setSocket] = useState(null);
   const [activeAlert, setActiveAlert] = useState(null);
+
+  const triggerAlarm = useCallback((payload) => {
+    playAlarmChime();
+    setActiveAlert({
+      type: 'dose',
+      doseId: payload.doseId || null,
+      title: payload.title || 'Waktunya Minum Obat! 💊',
+      message: payload.message || `Jadwal obat: ${payload.medication || 'Obat Harian'}`,
+      dosage: payload.dosage || null,
+      instructions: payload.instructions || null,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    });
+  }, []);
 
   useEffect(() => {
     if (!token || !user) {
@@ -22,16 +59,14 @@ export function SocketProvider({ children }) {
       transports: ['websocket', 'polling'],
     });
 
-    s.on('connect', () => {
-      // Connected
-    });
-
     s.on('dose:due', (data) => {
-      setActiveAlert({
-        type: 'dose',
-        title: 'Waktunya Minum Obat! 💊',
-        message: `Jadwal obat: ${data.medication}`,
-        time: new Date().toLocaleTimeString(),
+      triggerAlarm({
+        doseId: data.doseId,
+        medication: data.medication,
+        dosage: data.dosage,
+        instructions: data.instructions,
+        title: 'Alarm Pengingat Obat! 💊',
+        message: `${data.medication}${data.dosage ? ` (${data.dosage})` : ''}`,
       });
     });
 
@@ -40,10 +75,30 @@ export function SocketProvider({ children }) {
     return () => {
       s.disconnect();
     };
-  }, [token, user]);
+  }, [token, user, triggerAlarm]);
+
+  const snoozeAlert = useCallback((minutes = 10) => {
+    if (!activeAlert) return;
+    const saved = { ...activeAlert };
+    setActiveAlert(null);
+    setTimeout(() => {
+      triggerAlarm({
+        ...saved,
+        title: 'Pengingat Tunda (Snooze) 💊',
+      });
+    }, minutes * 60 * 1000);
+  }, [activeAlert, triggerAlarm]);
 
   return (
-    <SocketContext.Provider value={{ socket, activeAlert, clearAlert: () => setActiveAlert(null) }}>
+    <SocketContext.Provider
+      value={{
+        socket,
+        activeAlert,
+        clearAlert: () => setActiveAlert(null),
+        snoozeAlert,
+        triggerAlarm,
+      }}
+    >
       {children}
     </SocketContext.Provider>
   );

@@ -1,76 +1,124 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Pill, Clock, Plus, Trash2, MessageSquare, Save, CheckCircle2,
-  AlertCircle, FileText, Send, CheckCheck, UserCheck, Stethoscope
+  AlertCircle, FileText, Send, HeartPulse, Activity, Printer, Phone, XCircle, Calendar
 } from 'lucide-react';
 import { api } from '../../api/client';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import AdherenceRing from '../../components/AdherenceRing';
+import { dateTimeInputInZone } from '../../utils/date';
+
+const DRP_LABELS = {
+  NONE: { id: 'Tidak Ada Masalah Terapi (Terkontrol)', en: 'No Drug Therapy Problem (Controlled)' },
+  NON_ADHERENCE: { id: 'Ketidakpatuhan / Lupa Dosis (Non-Adherence)', en: 'Medication Non-Adherence / Missed Doses' },
+  ADVERSE_DRUG_REACTION: { id: 'Keluhan Efek Samping Obat (ESO/ADR)', en: 'Adverse Drug Reaction / Side Effect' },
+  SUBOPTIMAL_DOSAGE: { id: 'Dosis / Jam Minum Belum Optimal', en: 'Suboptimal Dosage / Schedule Timing' },
+  DRUG_INTERACTION: { id: 'Potensi Interaksi Obat / Suplemen', en: 'Potential Drug / Supplement Interaction' },
+  NEEDS_ADDITIONAL_THERAPY: { id: 'Memerlukan Terapi / Evaluasi Dokter Tambahan', en: 'Needs Additional Therapy / Physician Review' },
+};
 
 export default function StaffPatientDetail() {
   const { id } = useParams();
-  const { t } = useLanguage();
+  const [searchParams] = useSearchParams();
+  const { t, lang } = useLanguage();
   const { user } = useAuth();
   const { socket } = useSocket();
 
   const [patient, setPatient] = useState(null);
   const [medications, setMedications] = useState([]);
   const [adherence, setAdherence] = useState(null);
+  const [bloodPressure, setBloodPressure] = useState(null);
   const [doses, setDoses] = useState([]);
+  const [followUps, setFollowUps] = useState([]);
+  const [waLogs, setWaLogs] = useState([]);
+  const [waMeUrl, setWaMeUrl] = useState(null);
+  const [staffList, setStaffList] = useState([]);
   const [messages, setMessages] = useState([]);
   const [responses, setResponses] = useState([]);
   const [articles, setArticles] = useState([]);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => searchParams.get('tab') || 'overview');
+  const [historyDays, setHistoryDays] = useState(14);
   const [loading, setLoading] = useState(true);
 
   // Notes state
   const [notes, setNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
 
-  // Chat reply state
+  // Chat & WhatsApp reply state
   const [chatInput, setChatInput] = useState('');
   const [sendingMsg, setSendingMsg] = useState(false);
+  const [waInput, setWaInput] = useState('');
+  const [sendingWa, setSendingWa] = useState(false);
 
   // Add Medication Modal state
   const [showAddMed, setShowAddMed] = useState(false);
+  const [clinicBp, setClinicBp] = useState({ systolic: '', diastolic: '', pulse: '', note: '' });
+  const [savingBp, setSavingBp] = useState(false);
   const [medForm, setMedForm] = useState({
-    name: '', dosage: '', form: '', instructions: '', times: '07:00', articleId: '',
+    name: '', dosage: '', form: 'Tablet', instructions: '', times: '07:00', articleId: '',
   });
+
+  // Follow-Up & PTO Form State
+  const [ptoForm, setPtoForm] = useState({
+    type: 'PTO_REPORT',
+    subjective: '',
+    objective: '',
+    assessment: '',
+    plan: '',
+    drpCategory: 'NONE',
+    recommendation: '',
+    nextFollowUpDate: '',
+    sendToChat: true,
+    sendViaWhatsApp: true,
+  });
+  const [savingPto, setSavingPto] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
-      const [pRes, mRes, aRes, dRes, msgRes, rRes, artRes] = await Promise.all([
+      const todayStr = dateTimeInputInZone(new Date(), 'Asia/Jakarta').slice(0, 10);
+      const fromDate = new Date(Date.now() - (historyDays - 1) * 86400000);
+      const fromStr = dateTimeInputInZone(fromDate, 'Asia/Jakarta').slice(0, 10);
+
+      const [pRes, mRes, aRes, dRes, msgRes, rRes, artRes, bpRes, fRes, waRes, stRes] = await Promise.all([
         api.getPatient(id),
         api.getMedications(id, true),
         api.getAdherence(id, 30),
-        api.getDoses(id),
+        api.getDoses(id, fromStr, todayStr),
         api.getMessages(id, 50),
         api.getPatientResponses(id),
         api.getArticles(),
+        api.getBloodPressures(id, 30, 60),
+        api.getFollowUps(id).catch(() => ({ followUps: [] })),
+        api.getPatientWhatsAppLogs(id).catch(() => ({ logs: [], waMeUrl: null })),
+        api.getStaffList().catch(() => ({ users: [] })),
       ]);
       setPatient(pRes.patient);
       setNotes(pRes.patient?.notes || '');
       setMedications(mRes.medications || []);
       setAdherence(aRes);
-      setDoses(dRes.doses || []);
+      setDoses((dRes.doses || []).slice().reverse());
       setMessages(msgRes.messages || []);
       setResponses(rRes.responses || []);
       setArticles(artRes.articles || []);
+      setBloodPressure({ logs: bpRes.logs || [], summary: bpRes.summary || null });
+      setFollowUps(fRes.followUps || []);
+      setWaLogs(waRes.logs || []);
+      setWaMeUrl(waRes.waMeUrl || null);
+      setStaffList((stRes.users || []).filter((u) => u.role === 'PHARMACIST'));
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, historyDays]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  // Real-time chat listener
   useEffect(() => {
     if (!socket) return;
     const handleMsg = (msg) => {
@@ -78,15 +126,31 @@ export default function StaffPatientDetail() {
         setMessages((prev) => [...prev, msg]);
       }
     };
+    const handleBp = (log) => {
+      if (log.patientId === id) loadData();
+    };
     socket.on('message:new', handleMsg);
-    return () => socket.off('message:new', handleMsg);
-  }, [socket, id]);
+    socket.on('blood-pressure:changed', handleBp);
+    return () => {
+      socket.off('message:new', handleMsg);
+      socket.off('blood-pressure:changed', handleBp);
+    };
+  }, [socket, id, loadData]);
+
+  const handleAssignPharmacist = async (newPharmacistId) => {
+    try {
+      await api.updatePatient(id, { pharmacistId: newPharmacistId || null });
+      await loadData();
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
   const handleSaveNotes = async () => {
     setSavingNotes(true);
     try {
       await api.updatePatient(id, { notes });
-      alert('Catatan intervensi klinis berhasil disimpan!');
+      alert(lang === 'id' ? 'Catatan klinis berhasil disimpan!' : 'Clinical notes saved!');
     } catch (err) {
       alert(err.message || 'Gagal menyimpan catatan');
     } finally {
@@ -108,7 +172,7 @@ export default function StaffPatientDetail() {
         articleId: medForm.articleId || undefined,
       });
       setShowAddMed(false);
-      setMedForm({ name: '', dosage: '', form: '', instructions: '', times: '07:00', articleId: '' });
+      setMedForm({ name: '', dosage: '', form: 'Tablet', instructions: '', times: '07:00', articleId: '' });
       await loadData();
     } catch (err) {
       alert(err.message || 'Gagal menambahkan obat');
@@ -141,6 +205,71 @@ export default function StaffPatientDetail() {
     }
   };
 
+  const handleSendWhatsApp = async (e) => {
+    e.preventDefault();
+    if (!waInput.trim() || sendingWa) return;
+    setSendingWa(true);
+    try {
+      await api.sendPatientWhatsApp(id, {
+        message: waInput.trim(),
+        category: 'FOLLOW_UP',
+      });
+      setWaInput('');
+      await loadData();
+    } catch (err) {
+      alert(err.message || 'Gagal mengirim pesan WhatsApp');
+    } finally {
+      setSendingWa(false);
+    }
+  };
+
+  const handleClinicBp = async (e) => {
+    e.preventDefault();
+    if (!clinicBp.systolic || !clinicBp.diastolic) return;
+    setSavingBp(true);
+    try {
+      await api.recordBloodPressure(id, {
+        systolic: Number(clinicBp.systolic),
+        diastolic: Number(clinicBp.diastolic),
+        pulse: clinicBp.pulse ? Number(clinicBp.pulse) : undefined,
+        note: clinicBp.note || undefined,
+        source: 'CLINIC',
+      });
+      setClinicBp({ systolic: '', diastolic: '', pulse: '', note: '' });
+      await loadData();
+    } catch (err) {
+      alert(err.message || 'Gagal menyimpan tekanan darah');
+    } finally {
+      setSavingBp(false);
+    }
+  };
+
+  const handleCreateFollowUp = async (e) => {
+    e.preventDefault();
+    if (!ptoForm.plan.trim()) return;
+    setSavingPto(true);
+    try {
+      await api.createFollowUp(id, ptoForm);
+      setPtoForm({
+        type: 'PTO_REPORT',
+        subjective: '',
+        objective: '',
+        assessment: '',
+        plan: '',
+        drpCategory: 'NONE',
+        recommendation: '',
+        nextFollowUpDate: '',
+        sendToChat: true,
+        sendViaWhatsApp: true,
+      });
+      await loadData();
+    } catch (err) {
+      alert(err.message || 'Gagal menyimpan laporan tindak lanjut');
+    } finally {
+      setSavingPto(false);
+    }
+  };
+
   if (loading || !patient) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-16 text-center text-slate-500">
@@ -151,31 +280,57 @@ export default function StaffPatientDetail() {
   }
 
   const tabs = [
-    { id: 'overview', label: 'Ringkasan Kepatuhan' },
-    { id: 'medications', label: `Obat & Jadwal (${medications.filter((m) => m.active).length})` },
-    { id: 'chat', label: `Konsultasi Chat (${messages.length})` },
-    { id: 'notes', label: 'Catatan Apoteker' },
-    { id: 'surveys', label: `Kuesioner (${responses.length})` },
+    { id: 'overview', label: lang === 'id' ? 'Ringkasan Kepatuhan' : 'Adherence Summary' },
+    { id: 'medications', label: `${lang === 'id' ? 'Obat & Jadwal' : 'Medications'} (${medications.filter((m) => m.active).length})` },
+    { id: 'history', label: `${lang === 'id' ? 'Riwayat Obat' : 'Dose History'} (${doses.length})` },
+    { id: 'blood-pressure', label: lang === 'id' ? 'Tekanan Darah' : 'Blood Pressure' },
+    { id: 'followups', label: `${lang === 'id' ? 'Tindak Lanjut & Laporan PTO' : 'Follow-Up & PTO Report'} (${followUps.length})` },
+    { id: 'chat', label: `${lang === 'id' ? 'Chat & WhatsApp' : 'Chat & WhatsApp'} (${messages.length})` },
+    { id: 'notes', label: lang === 'id' ? 'Catatan & Survei' : 'Notes & Surveys' },
   ];
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <Link
-        to="/staff"
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        <span>Kembali ke Daftar Pasien</span>
-      </Link>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24 space-y-6">
+      {/* Top Bar */}
+      <div className="flex items-center justify-between print:hidden">
+        <Link
+          to="/staff"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>{lang === 'id' ? 'Kembali ke Daftar Pasien' : 'Back to Patient List'}</span>
+        </Link>
+
+        <button
+          onClick={() => {
+            setActiveTab('followups');
+            setTimeout(() => window.print(), 200);
+          }}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-700 shadow-xs transition"
+        >
+          <Printer className="w-4 h-4 text-teal-600" />
+          <span>{lang === 'id' ? 'Cetak Laporan PTO (PDF)' : 'Print PTO Report (PDF)'}</span>
+        </button>
+      </div>
+
+      {/* Printable Official Clinical Header (Visible when printing) */}
+      <div className="hidden print:block border-b-2 border-teal-800 pb-4 mb-4">
+        <h1 className="text-xl font-extrabold text-teal-950 uppercase">
+          Laporan Pemantauan Terapi Obat (PTO) & Farmasi Klinis
+        </h1>
+        <p className="text-xs text-slate-600">
+          Platform Layanan Farmasi Digital Apoteku • Apoteker Penanggung Jawab: {patient.pharmacist?.name || user.name}
+        </p>
+      </div>
 
       {/* Patient Header Banner */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-        <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-extrabold text-2xl shadow-sm">
+      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="flex items-start sm:items-center space-x-4">
+          <div className="w-16 h-16 rounded-2xl bg-teal-600 text-white flex items-center justify-center font-extrabold text-2xl shadow-sm shrink-0">
             {patient.user.name.charAt(0)}
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-extrabold text-slate-900 leading-tight">
                 {patient.user.name}
               </h1>
@@ -183,17 +338,56 @@ export default function StaffPatientDetail() {
                 {patient.studyCode || 'P-???'}
               </span>
             </div>
-            <p className="text-xs text-slate-500 mt-1 flex items-center gap-2">
+            <p className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-2">
               <span>{patient.user.phone || patient.user.email}</span>
               <span>•</span>
               <span>Diagnosis: <strong>{patient.diagnosis || '—'}</strong></span>
+              {patient.allergies && (
+                <>
+                  <span>•</span>
+                  <span className="text-rose-700 font-semibold">Alergi: {patient.allergies}</span>
+                </>
+              )}
             </p>
+            <div className="flex flex-wrap items-center gap-2 mt-2">
+              <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full">
+                {patient.studyGroup === 'CONTROL' ? 'Kelompok Kontrol' : 'Kelompok Intervensi'}
+              </span>
+              {patient.estimatedDueDate && (
+                <span className="text-[10px] font-semibold text-slate-500">
+                  HPL {new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' }).format(new Date(patient.estimatedDueDate))}
+                </span>
+              )}
+              <div className="flex items-center gap-1 text-[11px] text-slate-600 print:hidden">
+                <span>• Apoteker PJ:</span>
+                <select
+                  value={patient.pharmacistId || ''}
+                  onChange={(e) => handleAssignPharmacist(e.target.value)}
+                  className="bg-slate-100 border border-slate-200 rounded-lg px-2 py-0.5 text-xs font-bold text-teal-800"
+                >
+                  <option value="">-- Pilih Apoteker --</option>
+                  {staffList.map((st) => (
+                    <option key={st.id} value={st.id}>{st.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Adherence Rate */}
+        {/* Adherence & BP Summary */}
         <div className="flex items-center gap-6">
           <div className="text-right">
+            <span className="block text-2xl font-extrabold text-rose-600">
+              {bloodPressure?.summary?.latest
+                ? `${bloodPressure.summary.latest.systolic}/${bloodPressure.summary.latest.diastolic}`
+                : '—'}
+            </span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              TD Terakhir (mmHg)
+            </span>
+          </div>
+          <div className="text-right border-l border-slate-200 pl-6">
             <span className="block text-2xl font-extrabold text-teal-600">
               {adherence?.rate !== null && adherence?.rate !== undefined ? `${Math.round(adherence.rate)}%` : '—'}
             </span>
@@ -205,12 +399,12 @@ export default function StaffPatientDetail() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 space-x-1 sm:space-x-2 overflow-x-auto">
+      <div className="flex border-b border-slate-200 space-x-1 overflow-x-auto print:hidden">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-3 text-xs sm:text-sm font-bold border-b-2 whitespace-nowrap transition ${
+            className={`px-3.5 py-3 text-xs font-bold border-b-2 whitespace-nowrap transition ${
               activeTab === tab.id
                 ? 'border-teal-600 text-teal-700'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -221,7 +415,7 @@ export default function StaffPatientDetail() {
         ))}
       </div>
 
-      {/* Tab 1: Overview */}
+      {/* TAB 1: Overview */}
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center">
@@ -248,7 +442,7 @@ export default function StaffPatientDetail() {
                     <div>
                       <span className="font-semibold text-slate-900 text-sm">{m.name}</span>
                       <span className="text-xs text-slate-500 block">
-                        Diminum: {m.TAKEN} | Lewat: {m.SKIPPED} | Lupa: {m.MISSED}
+                        Diminum: {m.TAKEN} | Dilewati: {m.SKIPPED} | Terlewat: {m.MISSED}
                       </span>
                     </div>
                     <span className="font-bold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200 text-xs">
@@ -260,15 +454,22 @@ export default function StaffPatientDetail() {
             ) : (
               <p className="text-xs text-slate-400">Belum ada riwayat konsumsi obat yang tercatat.</p>
             )}
+
+            {patient.riskFactors && (
+              <div className="mt-4 p-4 bg-amber-50/70 border border-amber-200 rounded-xl text-xs text-amber-950">
+                <strong className="block uppercase text-[10px] text-amber-700 mb-1">Faktor Risiko Klinis:</strong>
+                {patient.riskFactors}
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* Tab 2: Medications */}
+      {/* TAB 2: Medications */}
       {activeTab === 'medications' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-slate-900 text-base">Regimen Resep Obat</h3>
+            <h3 className="font-bold text-slate-900 text-base">Regimen Resep & Jadwal Pengobatan</h3>
             <button
               onClick={() => setShowAddMed(true)}
               className="flex items-center space-x-1.5 px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
@@ -294,9 +495,9 @@ export default function StaffPatientDetail() {
                       <p className="text-xs text-slate-600 mt-2">{med.instructions}</p>
                     )}
                     <div className="mt-3 flex flex-wrap gap-1">
-                      {med.times.map((t) => (
-                        <span key={t} className="text-xs bg-slate-100 font-bold px-2 py-0.5 rounded text-slate-700">
-                          {t}
+                      {med.times.map((timeStr) => (
+                        <span key={timeStr} className="text-xs bg-slate-100 font-bold px-2 py-0.5 rounded text-slate-700">
+                          {timeStr}
                         </span>
                       ))}
                     </div>
@@ -317,116 +518,624 @@ export default function StaffPatientDetail() {
         </div>
       )}
 
-      {/* Tab 3: Chat */}
-      {activeTab === 'chat' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 h-[550px] flex flex-col">
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 bg-slate-50 rounded-xl">
-            {messages.length === 0 ? (
-              <p className="text-center py-12 text-slate-400 text-xs">Belum ada riwayat pesan.</p>
-            ) : (
-              messages.map((m) => {
-                const isMe = m.senderId === user.id;
-                return (
-                  <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                    <span className="text-[10px] text-slate-400 mb-0.5 px-1">{m.sender?.name}</span>
-                    <div
-                      className={`max-w-[75%] px-3.5 py-2 rounded-2xl text-xs leading-relaxed ${
-                        isMe ? 'bg-teal-600 text-white rounded-br-none' : 'bg-white text-slate-900 border border-slate-200 rounded-bl-none'
-                      }`}
-                    >
-                      <p>{m.body}</p>
-                      <span className={`block text-[9px] mt-1 text-right ${isMe ? 'text-teal-200' : 'text-slate-400'}`}>
-                        {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
+      {/* TAB 3: Medication Use History (Riwayat Pengobatan Pasien) */}
+      {activeTab === 'history' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-teal-600" />
+              <h3 className="font-bold text-slate-900 text-sm">
+                {lang === 'id' ? 'Riwayat Penggunaan & Konfirmasi Dosis Obat Pasien' : 'Patient Medication Consumption Log'}
+              </h3>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {[7, 14, 30].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setHistoryDays(d)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition ${
+                    historyDays === d ? 'bg-teal-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {d} {lang === 'id' ? 'Hari' : 'Days'}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <form onSubmit={handleSendChat} className="mt-3 flex items-center gap-2">
-            <input
-              type="text"
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Ketik balasan atau instruksi apoteker..."
-              className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
+          {doses.length === 0 ? (
+            <p className="p-12 text-center text-xs text-slate-400">
+              Belum ada riwayat penggunaan obat pada rentang tanggal ini.
+            </p>
+          ) : (
+            <div className="overflow-x-auto max-h-[540px] overflow-y-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-500 uppercase">
+                  <tr>
+                    <th className="px-5 py-3">Waktu Jadwal</th>
+                    <th className="px-5 py-3">Obat & Dosis</th>
+                    <th className="px-5 py-3">Status</th>
+                    <th className="px-5 py-3">Waktu Diminum / Deviasi</th>
+                    <th className="px-5 py-3">Catatan Pasien</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {doses.map((d) => {
+                    const delayMin =
+                      d.status === 'TAKEN' && d.takenAt
+                        ? Math.round((new Date(d.takenAt) - new Date(d.scheduledAt)) / 60000)
+                        : null;
+                    return (
+                      <tr key={d.id} className="hover:bg-slate-50">
+                        <td className="px-5 py-3 font-mono text-slate-700">
+                          {new Intl.DateTimeFormat('id-ID', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                            timeZone: patient.user.timezone,
+                          }).format(new Date(d.scheduledAt))}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className="font-bold text-slate-900">{d.medication?.name}</span>{' '}
+                          <span className="text-teal-700 font-semibold">{d.medication?.dosage}</span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold border ${
+                            d.status === 'TAKEN' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : d.status === 'SKIPPED' ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                : d.status === 'MISSED' ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                  : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            {d.status}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-slate-600">
+                          {d.takenAt
+                            ? `${new Date(d.takenAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${delayMin >= 0 ? `+${delayMin}` : delayMin} mnt)`
+                            : '—'}
+                        </td>
+                        <td className="px-5 py-3 italic text-slate-500">{d.note || '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 4: Blood Pressure */}
+      {activeTab === 'blood-pressure' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Terakhir</span>
+                <div className="mt-2 text-2xl font-extrabold text-slate-900">
+                  {bloodPressure?.summary?.latest
+                    ? `${bloodPressure.summary.latest.systolic}/${bloodPressure.summary.latest.diastolic}`
+                    : '—'}
+                  <span className="text-[11px] font-medium text-slate-400 ml-1">mmHg</span>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Rata-rata</span>
+                <div className="mt-2 text-2xl font-extrabold text-slate-900">
+                  {bloodPressure?.summary?.average
+                    ? `${bloodPressure.summary.average.systolic}/${bloodPressure.summary.average.diastolic}`
+                    : '—'}
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Terkontrol</span>
+                <div className="mt-2 text-2xl font-extrabold text-teal-700">
+                  {bloodPressure?.summary?.controlRate == null ? '—' : `${bloodPressure.summary.controlRate}%`}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+                <HeartPulse className="w-4 h-4 text-rose-500" />
+                <h3 className="font-bold text-slate-900 text-sm">Riwayat tekanan darah</h3>
+              </div>
+              {bloodPressure?.logs?.length ? (
+                <div className="divide-y divide-slate-100 max-h-[480px] overflow-y-auto">
+                  {bloodPressure.logs.map((log) => (
+                    <div key={log.id} className="px-5 py-3 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="font-bold text-slate-900">
+                          {log.systolic}/{log.diastolic}
+                          <span className="text-[10px] font-medium text-slate-400 ml-1.5">mmHg</span>
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {new Intl.DateTimeFormat('id-ID', {
+                            timeZone: patient.user.timezone,
+                            dateStyle: 'medium',
+                            timeStyle: 'short',
+                          }).format(new Date(log.measuredAt))}
+                          {' · '}{log.source === 'CLINIC' ? 'Klinik' : 'Mandiri'}
+                        </p>
+                        {log.note && <p className="text-xs text-slate-500 mt-1">{log.note}</p>}
+                      </div>
+                      <span className={`text-[10px] font-bold border rounded-full px-2 py-1 ${
+                        log.category === 'NORMAL'
+                          ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                          : log.category === 'ELEVATED'
+                            ? 'text-amber-700 bg-amber-50 border-amber-200'
+                            : log.category === 'LOW'
+                              ? 'text-sky-700 bg-sky-50 border-sky-200'
+                              : 'text-rose-700 bg-rose-50 border-rose-200'
+                      }`}>
+                        {log.category}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="px-5 py-12 text-center text-sm text-slate-400">Belum ada pengukuran tekanan darah.</p>
+              )}
+            </div>
+          </div>
+
+          <form onSubmit={handleClinicBp} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3 h-fit">
+            <div className="flex items-center gap-2">
+              <Activity className="w-4 h-4 text-teal-600" />
+              <h3 className="font-bold text-slate-900 text-sm">Catat hasil klinik</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="text-[10px] font-bold uppercase text-slate-500">
+                Sistolik
+                <input
+                  type="number"
+                  min="60"
+                  max="260"
+                  required
+                  value={clinicBp.systolic}
+                  onChange={(e) => setClinicBp({ ...clinicBp, systolic: e.target.value })}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-base font-bold text-slate-900"
+                />
+              </label>
+              <label className="text-[10px] font-bold uppercase text-slate-500">
+                Diastolik
+                <input
+                  type="number"
+                  min="30"
+                  max="160"
+                  required
+                  value={clinicBp.diastolic}
+                  onChange={(e) => setClinicBp({ ...clinicBp, diastolic: e.target.value })}
+                  className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-base font-bold text-slate-900"
+                />
+              </label>
+            </div>
+            <label className="block text-[10px] font-bold uppercase text-slate-500">
+              Nadi
+              <input
+                type="number"
+                min="30"
+                max="220"
+                value={clinicBp.pulse}
+                onChange={(e) => setClinicBp({ ...clinicBp, pulse: e.target.value })}
+                className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="block text-[10px] font-bold uppercase text-slate-500">
+              Catatan
+              <textarea
+                rows="2"
+                value={clinicBp.note}
+                onChange={(e) => setClinicBp({ ...clinicBp, note: e.target.value })}
+                className="mt-1 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs"
+              />
+            </label>
             <button
               type="submit"
-              disabled={!chatInput.trim() || sendingMsg}
-              className="p-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl transition disabled:opacity-50"
+              disabled={savingBp}
+              className="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-700 disabled:opacity-50"
             >
-              <Send className="w-4 h-4" />
+              {savingBp ? 'Menyimpan...' : 'Simpan pengukuran'}
             </button>
           </form>
         </div>
       )}
 
-      {/* Tab 4: Pharmacist Notes */}
-      {activeTab === 'notes' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-          <div>
-            <h3 className="font-bold text-slate-900 text-sm">
-              Catatan Intervensi & Konseling Farmasi (Privat Tim Peneliti)
-            </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Catatan ini hanya dapat dilihat oleh apoteker dan administrator, tidak ditampilkan kepada pasien.
-            </p>
-          </div>
-
-          <textarea
-            rows={8}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Tulis riwayat konseling, penyesuaian jadwal obat, keluhan efek samping, atau catatan penting riset..."
-            className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 font-sans"
-          />
-
-          <button
-            onClick={handleSaveNotes}
-            disabled={savingNotes}
-            className="flex items-center space-x-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold shadow-sm transition disabled:opacity-50"
+      {/* TAB 5: Follow-Up & Pharmacotherapy Monitoring Report (PTO) */}
+      {activeTab === 'followups' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left: Form to Record Follow-Up / PTO Report (Hidden on Print) */}
+          <form
+            onSubmit={handleCreateFollowUp}
+            className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-3 h-fit print:hidden"
           >
-            <Save className="w-4 h-4" />
-            <span>{savingNotes ? t.common.loading : t.common.save}</span>
-          </button>
+            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+              <FileText className="w-4 h-4 text-teal-600" />
+              <h3 className="font-bold text-slate-900 text-sm">
+                {lang === 'id' ? 'Buat Tindak Lanjut & Laporan PTO Baru' : 'New Follow-Up & PTO Report'}
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-bold uppercase text-slate-500">Jenis Evaluasi</label>
+                <select
+                  value={ptoForm.type}
+                  onChange={(e) => setPtoForm({ ...ptoForm, type: e.target.value })}
+                  className="mt-1 w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+                >
+                  <option value="PTO_REPORT">Laporan PTO (SOAP)</option>
+                  <option value="FOLLOW_UP">Tindak Lanjut Berkala</option>
+                  <option value="COUNSELING">Konseling Kepatuhan</option>
+                  <option value="DRP_INTERVENTION">Intervensi DRP / Efek Samping</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-slate-500">Jadwal Evaluasi Berikutnya</label>
+                <input
+                  type="date"
+                  value={ptoForm.nextFollowUpDate}
+                  onChange={(e) => setPtoForm({ ...ptoForm, nextFollowUpDate: e.target.value })}
+                  className="mt-1 w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase text-slate-500">Kategori Masalah Terapi Obat (DRP)</label>
+              <select
+                value={ptoForm.drpCategory}
+                onChange={(e) => setPtoForm({ ...ptoForm, drpCategory: e.target.value })}
+                className="mt-1 w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
+              >
+                {Object.entries(DRP_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>{lang === 'id' ? v.id : v.en}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase text-slate-500">Subjective (Keluhan Pasien)</label>
+              <textarea
+                rows={2}
+                value={ptoForm.subjective}
+                onChange={(e) => setPtoForm({ ...ptoForm, subjective: e.target.value })}
+                placeholder="Keluhan pasien, gejala, kendala waktu minum obat..."
+                className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase text-slate-500">Objective (Data Kepatuhan & Tekanan Darah)</label>
+              <textarea
+                rows={2}
+                value={ptoForm.objective}
+                onChange={(e) => setPtoForm({ ...ptoForm, objective: e.target.value })}
+                placeholder="Hasil TD terbaru, skor kepatuhan 30 hari, hasil lab..."
+                className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase text-slate-500">Assessment (Analisis Farmakoterapi)</label>
+              <textarea
+                rows={2}
+                value={ptoForm.assessment}
+                onChange={(e) => setPtoForm({ ...ptoForm, assessment: e.target.value })}
+                placeholder="Evaluasi efektivitas terapi, keamanan, dan kepatuhan..."
+                className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase text-slate-500">Plan (Rencana Tindak Lanjut Farmakoterapi) *</label>
+              <textarea
+                rows={3}
+                required
+                value={ptoForm.plan}
+                onChange={(e) => setPtoForm({ ...ptoForm, plan: e.target.value })}
+                placeholder="Rencana intervensi apoteker, penyesuaian jadwal alarm, edukasi..."
+                className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-[10px] font-bold uppercase text-slate-500">Rekomendasi Spesifik untuk Pasien / Dokter</label>
+              <input
+                type="text"
+                value={ptoForm.recommendation}
+                onChange={(e) => setPtoForm({ ...ptoForm, recommendation: e.target.value })}
+                placeholder="Saran praktis yang dikirim ke pasien..."
+                className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              />
+            </div>
+
+            <div className="space-y-1.5 pt-1">
+              <label className="flex items-center gap-2 text-xs text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={ptoForm.sendToChat}
+                  onChange={(e) => setPtoForm({ ...ptoForm, sendToChat: e.target.checked })}
+                  className="rounded border-slate-300 text-teal-600"
+                />
+                <span>Kirim ringkasan ke ruang Konsultasi Chat pasien</span>
+              </label>
+              <label className="flex items-center gap-2 text-xs text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={ptoForm.sendViaWhatsApp}
+                  onChange={(e) => setPtoForm({ ...ptoForm, sendViaWhatsApp: e.target.checked })}
+                  className="rounded border-slate-300 text-teal-600"
+                />
+                <span>Kirim tindak lanjut otomatis ke WhatsApp pasien</span>
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              disabled={savingPto}
+              className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition disabled:opacity-50"
+            >
+              {savingPto ? 'Menyimpan Laporan PTO...' : 'Simpan & Kirim Tindak Lanjut PTO'}
+            </button>
+          </form>
+
+          {/* Right: Printable List of PTO Reports & Follow-Ups */}
+          <div className="lg:col-span-7 print:col-span-12 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 text-base">
+                Rekam Laporan Pemantauan Farmakoterapi (PTO) & Tindak Lanjut
+              </h3>
+              <button
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 text-teal-800 rounded-lg text-xs font-bold hover:bg-teal-100 print:hidden"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Cetak / PDF</span>
+              </button>
+            </div>
+
+            {followUps.length === 0 ? (
+              <div className="bg-white rounded-2xl p-10 border border-slate-200 text-center text-slate-400 text-xs">
+                Belum ada rekam laporan pemantauan farmakoterapi untuk pasien ini.
+              </div>
+            ) : (
+              followUps.map((f) => (
+                <div key={f.id} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3 break-inside-avoid">
+                  <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold uppercase bg-teal-50 text-teal-800 border border-teal-200 px-2 py-0.5 rounded-full">
+                          {f.type}
+                        </span>
+                        <span className="text-[10px] font-bold uppercase bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">
+                          DRP: {DRP_LABELS[f.drpCategory]?.id || f.drpCategory}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Oleh: <strong>{f.pharmacist?.name}</strong> •{' '}
+                        {new Date(f.createdAt).toLocaleString('id-ID')}
+                      </p>
+                    </div>
+                    <div className="text-right text-xs text-slate-600">
+                      {f.adherenceRate !== null && <div>Kepatuhan: <strong>{Math.round(f.adherenceRate)}%</strong></div>}
+                      {f.latestBp && <div>TD: <strong>{f.latestBp}</strong></div>}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    {f.subjective && (
+                      <div className="p-3 bg-slate-50 rounded-xl">
+                        <strong className="text-slate-800 block mb-0.5">S — Subjective:</strong>
+                        <p className="text-slate-600">{f.subjective}</p>
+                      </div>
+                    )}
+                    {f.objective && (
+                      <div className="p-3 bg-slate-50 rounded-xl">
+                        <strong className="text-slate-800 block mb-0.5">O — Objective:</strong>
+                        <p className="text-slate-600">{f.objective}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {f.assessment && (
+                    <div className="p-3 bg-slate-50 rounded-xl text-xs">
+                      <strong className="text-slate-800 block mb-0.5">A — Assessment (Analisis Farmakoterapi):</strong>
+                      <p className="text-slate-700">{f.assessment}</p>
+                    </div>
+                  )}
+
+                  <div className="p-3.5 bg-teal-50/60 border border-teal-200 rounded-xl text-xs">
+                    <strong className="text-teal-950 block mb-0.5">P — Plan (Rencana Tindak Lanjut):</strong>
+                    <p className="text-teal-900 whitespace-pre-line">{f.plan}</p>
+                  </div>
+
+                  {f.recommendation && (
+                    <p className="text-xs text-slate-700">
+                      <strong>Rekomendasi:</strong> {f.recommendation}
+                    </p>
+                  )}
+
+                  {f.nextFollowUpDate && (
+                    <p className="text-[11px] font-semibold text-indigo-700">
+                      Jadwal Tindak Lanjut Berikutnya: {new Date(f.nextFollowUpDate).toLocaleDateString('id-ID', { dateStyle: 'long' })}
+                    </p>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       )}
 
-      {/* Tab 5: Questionnaires */}
-      {activeTab === 'surveys' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-          <h3 className="font-bold text-slate-900 text-sm">
-            Riwayat Jawaban Kuesioner Pasien
-          </h3>
-          {responses.length === 0 ? (
-            <p className="text-xs text-slate-400">Pasien belum mengisi kuesioner apa pun.</p>
-          ) : (
-            <div className="space-y-3">
-              {responses.map((resp) => (
-                <div key={resp.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-slate-800 text-sm">{resp.questionnaire?.titleId}</span>
-                      <span className="text-xs text-slate-400 block">{new Date(resp.createdAt).toLocaleString()}</span>
+      {/* TAB 6: Chat & WhatsApp Integration */}
+      {activeTab === 'chat' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left 7 cols: In-App Live Chat */}
+          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 h-[550px] flex flex-col">
+            <h3 className="font-bold text-slate-900 text-sm mb-2 px-1">
+              Ruang Konsultasi Live Chat Aplikasi
+            </h3>
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 bg-slate-50 rounded-xl">
+              {messages.length === 0 ? (
+                <p className="text-center py-12 text-slate-400 text-xs">Belum ada riwayat pesan.</p>
+              ) : (
+                messages.map((m) => {
+                  const isMe = m.senderId === user.id;
+                  return (
+                    <div key={m.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                      <span className="text-[10px] text-slate-400 mb-0.5 px-1">{m.sender?.name}</span>
+                      <div
+                        className={`max-w-[78%] px-3.5 py-2 rounded-2xl text-xs leading-relaxed whitespace-pre-line ${
+                          isMe ? 'bg-teal-600 text-white rounded-br-none' : 'bg-white text-slate-900 border border-slate-200 rounded-bl-none'
+                        }`}
+                      >
+                        <p>{m.body}</p>
+                        <span className={`block text-[9px] mt-1 text-right ${isMe ? 'text-teal-200' : 'text-slate-400'}`}>
+                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
                     </div>
-                    {resp.score !== null && (
-                      <span className="font-bold text-teal-800 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200 text-xs">
-                        Skor: {resp.score}
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-slate-600 pt-2 border-t border-slate-200/60">
-                    <pre className="font-mono bg-white p-2 rounded border border-slate-200 overflow-x-auto text-[11px]">
-                      {JSON.stringify(resp.answers, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              ))}
+                  );
+                })
+              )}
             </div>
-          )}
+
+            <form onSubmit={handleSendChat} className="mt-3 flex items-center gap-2">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder="Ketik balasan atau instruksi apoteker..."
+                className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
+              />
+              <button
+                type="submit"
+                disabled={!chatInput.trim() || sendingMsg}
+                className="p-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl transition disabled:opacity-50"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </form>
+          </div>
+
+          {/* Right 5 cols: WhatsApp Reminder & Direct Gateway Sender */}
+          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-emerald-600" />
+                  <h3 className="font-bold text-slate-900 text-sm">Integrasi WhatsApp Pasien</h3>
+                </div>
+                {waMeUrl && (
+                  <a
+                    href={waMeUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-lg hover:bg-emerald-100"
+                  >
+                    Buka wa.me ↗
+                  </a>
+                )}
+              </div>
+
+              <form onSubmit={handleSendWhatsApp} className="space-y-2">
+                <label className="text-[10px] font-bold uppercase text-slate-500 block">
+                  Kirim Pesan / Pengingat WhatsApp ke {patient.user.phone || 'Pasien'}
+                </label>
+                <textarea
+                  rows={3}
+                  value={waInput}
+                  onChange={(e) => setWaInput(e.target.value)}
+                  placeholder={`Halo ${patient.user.name}, ini pengingat dari Apoteker ${user.name} untuk jadwal obat dan evaluasi tekanan darah Anda...`}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
+                />
+                <button
+                  type="submit"
+                  disabled={!waInput.trim() || sendingWa}
+                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition disabled:opacity-50"
+                >
+                  {sendingWa ? 'Mengirim ke WhatsApp...' : 'Kirim Pesan WhatsApp Sekarang'}
+                </button>
+              </form>
+
+              <div className="pt-2">
+                <span className="text-[10px] font-bold uppercase text-slate-400 block mb-2">
+                  Log Pengiriman WhatsApp ({waLogs.length})
+                </span>
+                <div className="space-y-2 max-h-[260px] overflow-y-auto">
+                  {waLogs.map((w) => (
+                    <div key={w.id} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px]">
+                      <div className="flex justify-between text-[10px] text-slate-400 mb-1">
+                        <span className="font-bold text-emerald-700">{w.category}</span>
+                        <span>{new Date(w.createdAt).toLocaleString('id-ID')} • {w.status}</span>
+                      </div>
+                      <p className="text-slate-700">{w.message}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 7: Private Notes & Questionnaires */}
+      {activeTab === 'notes' && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm">
+                Catatan Intervensi & Konseling Farmasi (Privat Tim Peneliti)
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Catatan ini hanya dapat dilihat oleh apoteker dan administrator, tidak ditampilkan kepada pasien.
+              </p>
+            </div>
+
+            <textarea
+              rows={8}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Tulis riwayat konseling, penyesuaian jadwal obat, keluhan efek samping, atau catatan penting riset..."
+              className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 font-sans"
+            />
+
+            <button
+              onClick={handleSaveNotes}
+              disabled={savingNotes}
+              className="flex items-center space-x-1.5 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold shadow-sm transition disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              <span>{savingNotes ? t.common.loading : t.common.save}</span>
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <h3 className="font-bold text-slate-900 text-sm">
+              Riwayat Jawaban Kuesioner Pasien ({responses.length})
+            </h3>
+            {responses.length === 0 ? (
+              <p className="text-xs text-slate-400">Pasien belum mengisi kuesioner apa pun.</p>
+            ) : (
+              <div className="space-y-3 max-h-[360px] overflow-y-auto">
+                {responses.map((resp) => (
+                  <div key={resp.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-bold text-slate-800 text-sm">{resp.questionnaire?.titleId}</span>
+                        <span className="text-xs text-slate-400 block">{new Date(resp.createdAt).toLocaleString()}</span>
+                      </div>
+                      {resp.score !== null && (
+                        <span className="font-bold text-teal-800 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200 text-xs">
+                          Skor: {resp.score}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -443,7 +1152,7 @@ export default function StaffPatientDetail() {
                   required
                   value={medForm.name}
                   onChange={(e) => setMedForm({ ...medForm, name: e.target.value })}
-                  placeholder="Amlodipin"
+                  placeholder="Aspirin dosis rendah"
                   className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
                 />
               </div>
@@ -455,7 +1164,7 @@ export default function StaffPatientDetail() {
                     type="text"
                     value={medForm.dosage}
                     onChange={(e) => setMedForm({ ...medForm, dosage: e.target.value })}
-                    placeholder="5 mg"
+                    placeholder="80 mg"
                     className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
                   />
                 </div>
