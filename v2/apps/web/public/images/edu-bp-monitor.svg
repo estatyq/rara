@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" fill="none">
+  <defs>
+    <linearGradient id="bpBg" x1="0" y1="0" x2="640" y2="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#EBF9F7"/>
+      <stop offset="55%" stop-color="#F5FBFE"/>
+      <stop offset="100%" stop-color="#E0F2FE"/>
+    </linearGradient>
+    <linearGradient id="screenGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0F766E"/>
+      <stop offset="100%" stop-color="#0D9488"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="640" height="360" fill="url(#bpBg)"/>
+  <circle cx="540" cy="60" r="110" fill="#CCFBF1" fill-opacity="0.55"/>
+  <circle cx="95" cy="310" r="120" fill="#BAE6FD" fill-opacity="0.5"/>
+
+  <!-- Subtle Heartbeat Wave Across Canvas -->
+  <path d="M0 245H120L148 210L174 272L204 180L234 252L258 232H640" stroke="#99F6E4" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Sleek Digital Blood Pressure Monitor Device -->
+  <rect x="200" y="46" width="240" height="268" rx="34" fill="#FFFFFF" stroke="#CCFBF1" stroke-width="2.5"/>
+  <rect x="224" y="72" width="192" height="134" rx="20" fill="url(#screenGrad)"/>
+
+  <!-- Readings on Screen (120 / 80 mmHg) -->
+  <text x="244" y="122" fill="#FFFFFF" font-family="Inter, system-ui, sans-serif" font-size="38" font-weight="800">120</text>
+  <text x="328" y="118" fill="#99F6E4" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="700">SYS mmHg</text>
+  <line x1="242" y1="138" x2="398" y2="138" stroke="#5EEAD4" stroke-opacity="0.35" stroke-width="1.5"/>
+  <text x="244" y="182" fill="#E0F2FE" font-family="Inter, system-ui, sans-serif" font-size="34" font-weight="800">80</text>
+  <text x="328" y="178" fill="#BAE6FD" font-family="Inter, system-ui, sans-serif" font-size="13" font-weight="700">DIA mmHg</text>
+
+  <!-- Start Button & Heart Indicator -->
+  <circle cx="320" cy="258" r="28" fill="#0D9488"/>
+  <path d="M320 268C320 268 308 260.4 308 252.6C308 248.8 310.9 246 314.5 246C316.9 246 318.9 247.4 320 249.4C321.1 247.4 323.1 246 325.5 246C329.1 246 332 248.8 332 252.6C332 260.4 320 268 320 268Z" fill="#FFFFFF"/>
+
+  <!-- Left & Right Mini Status Badges -->
+  <rect x="466" y="106" width="128" height="62" rx="16" fill="#FFFFFF" stroke="#E0F2FE" stroke-width="1.5"/>
+  <circle cx="492" cy="137" r="13" fill="#DCFCE7"/>
+  <path d="M487 137L491 141L498 133" stroke="#16A34A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="514" y="127" width="62" height="8" rx="4" fill="#0F172A"/>
+  <rect x="514" y="141" width="44" height="6" rx="3" fill="#16A34A"/>
+
+  <rect x="48" y="106" width="126" height="62" rx="16" fill="#FFFFFF" stroke="#CCFBF1" stroke-width="1.5"/>
+  <circle cx="74" cy="137" r="13" fill="#E0F2FE"/>
+  <path d="M68 137H71L73 132L76 142L78 137H80" stroke="#0284C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="96" y="127" width="58" height="8" rx="4" fill="#0F172A"/>
+  <rect x="96" y="141" width="42" height="6" rx="3" fill="#0284C7"/>
+</svg>

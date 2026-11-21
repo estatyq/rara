@@ -56,7 +56,7 @@ export default function LoginPage() {
         <div className="bg-gradient-to-b from-[#EDF9F8] via-white to-[#E6F4F9] p-8 sm:p-10 flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-r border-teal-100">
           <DoseMateLogo centered size="lg" showSubtitle />
           <div className="my-6 w-52 h-52 sm:w-60 sm:h-60 rounded-3xl overflow-hidden bg-white shadow-sm border border-teal-100">
-            <img src="/images/login-maternal.jpg" alt="DoseMate Care" className="w-full h-full object-cover" />
+            <img src="/images/login-general-care.svg" alt="DoseMate Medication Companion" className="w-full h-full object-cover" />
           </div>
           <p className="text-sm sm:text-base font-extrabold text-slate-800 max-w-xs">{t('common:tagline')}</p>
         </div>

@@ -129,7 +129,7 @@ export const enResources: TranslationResources = {
     criticalBannerBody: 'Seek immediate medical evaluation or contact emergency care. Your assigned clinical pharmacist has been alerted (15-min escalation SLA).',
     glucoseBadge: 'Under Development',
     glucoseTitle: 'Blood Glucose Monitoring',
-    glucoseDesc: 'Fasting glucose, 2-hour post-meal logging, and glycemic trend charts are under development for diabetes & gestational diabetes care.',
+    glucoseDesc: 'Fasting glucose, 2-hour post-meal logging, and glycemic trend charts are under development to support comprehensive diabetes care.',
     paramsTitle: 'Other Relevant Health Parameters',
     addParam: 'Save Parameter',
     checkupsTitle: 'Follow-Up & Check-Up Reminders',

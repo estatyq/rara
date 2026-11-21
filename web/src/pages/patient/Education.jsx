@@ -132,7 +132,7 @@ export default function PatientEducation() {
           {articles.map((art) => {
             const title = lang === 'en' ? art.titleEn : art.titleId;
             const summary = lang === 'en' ? art.summaryEn : art.summaryId;
-            const cover = art.coverImage || (art.drugName ? '/images/edu-medications.jpg' : '/images/edu-hypertension.jpg');
+            const cover = art.coverImage || (art.drugName ? '/images/edu-medications.jpg' : '/images/edu-bp-monitor.svg');
             const isVideo = art.mediaType === 'VIDEO';
 
             return (
@@ -240,7 +240,7 @@ export default function PatientEducation() {
             <div className="p-6 space-y-4">
               <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-video flex items-center justify-center">
                 <img
-                  src={activeVideo.coverImage || '/images/edu-hypertension.jpg'}
+                  src={activeVideo.coverImage || '/images/edu-bp-monitor.svg'}
                   alt=""
                   className="w-full h-full object-cover opacity-50"
                 />

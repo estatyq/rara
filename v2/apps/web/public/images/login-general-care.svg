@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <defs>
+    <linearGradient id="bgGlow" x1="0" y1="0" x2="400" y2="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#F0FAF8"/>
+      <stop offset="100%" stop-color="#E6F4FD"/>
+    </linearGradient>
+    <linearGradient id="tealGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#14B8A6"/>
+      <stop offset="100%" stop-color="#0F766E"/>
+    </linearGradient>
+    <linearGradient id="blueCard" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#38BDF8"/>
+      <stop offset="100%" stop-color="#0284C7"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Soft Background Circle -->
+  <rect width="400" height="400" rx="48" fill="url(#bgGlow)"/>
+  <circle cx="200" cy="205" r="142" fill="#FFFFFF" fill-opacity="0.72"/>
+
+  <!-- Soft Botanical Leaves (Teal & Soft Blue) -->
+  <path d="M88 310C58 265 62 208 106 175C120 220 116 272 88 310Z" fill="#99F6E4" fill-opacity="0.7"/>
+  <path d="M312 310C342 265 338 208 294 175C280 220 284 272 312 310Z" fill="#BAE6FD" fill-opacity="0.8"/>
+  <path d="M72 280C44 252 46 210 78 188C92 220 90 255 72 280Z" fill="#5EEAD4" fill-opacity="0.45"/>
+
+  <!-- Central Minimalist Smartphone Companion -->
+  <rect x="128" y="64" width="144" height="272" rx="28" fill="#0F766E"/>
+  <rect x="135" y="72" width="130" height="256" rx="22" fill="#FFFFFF"/>
+  <rect x="176" y="82" width="48" height="6" rx="3" fill="#CBD5E1"/>
+
+  <!-- Phone Inner Green Adherence Banner -->
+  <rect x="147" y="102" width="106" height="64" rx="16" fill="#E6F9F2"/>
+  <circle cx="228" cy="134" r="16" fill="#0D9488"/>
+  <path d="M221 134L226 139L236 129" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="158" y="116" width="46" height="8" rx="4" fill="#0F766E" fill-opacity="0.35"/>
+  <rect x="158" y="132" width="38" height="16" rx="6" fill="#0F766E"/>
+
+  <!-- Phone Medication Schedule Rows -->
+  <rect x="147" y="178" width="106" height="44" rx="14" fill="#F8FCFB" stroke="#CCFBF1" stroke-width="1.5"/>
+  <circle cx="167" cy="200" r="11" fill="#CCFBF1"/>
+  <path d="M163 200L166 203L172 197" stroke="#0D9488" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="186" y="191" width="54" height="7" rx="3.5" fill="#334155"/>
+  <rect x="186" y="204" width="36" height="5" rx="2.5" fill="#94A3B8"/>
+
+  <rect x="147" y="232" width="106" height="44" rx="14" fill="#F8FCFB" stroke="#E0F2FE" stroke-width="1.5"/>
+  <circle cx="167" cy="254" r="11" fill="#E0F2FE"/>
+  <circle cx="167" cy="254" r="4.5" fill="#0284C7"/>
+  <rect x="186" y="245" width="48" height="7" rx="3.5" fill="#334155"/>
+  <rect x="186" y="258" width="30" height="5" rx="2.5" fill="#94A3B8"/>
+
+  <!-- Primary Teal CTA Bar inside Phone -->
+  <rect x="155" y="288" width="90" height="24" rx="12" fill="url(#tealGrad)"/>
+
+  <!-- Floating Left Card: Heartbeat & BP Monitoring -->
+  <g filter="drop-shadow(0 8px 16px rgba(15,118,110,0.12))">
+    <rect x="44" y="122" width="102" height="70" rx="18" fill="#FFFFFF" stroke="#E0F2FE" stroke-width="1.5"/>
+    <circle cx="68" cy="146" r="12" fill="#E0F2FE"/>
+    <path d="M62 146H65L67 141L70 151L72 146H74" stroke="#0284C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="86" y="139" width="46" height="7" rx="3.5" fill="#0F172A"/>
+    <rect x="86" y="151" width="32" height="5" rx="2.5" fill="#64748B"/>
+    <path d="M56 177C68 177 74 166 84 169C94 172 102 162 114 166C122 169 128 164 134 162" stroke="#14B8A6" stroke-width="2.6" stroke-linecap="round"/>
+  </g>
+
+  <!-- Floating Right Card: Friendly Pill Reminder -->
+  <g filter="drop-shadow(0 8px 16px rgba(15,118,110,0.12))">
+    <rect x="256" y="206" width="102" height="68" rx="18" fill="#FFFFFF" stroke="#CCFBF1" stroke-width="1.5"/>
+    <g transform="rotate(-38 282 238)">
+      <rect x="266" y="229" width="32" height="17" rx="8.5" fill="#0D9488"/>
+      <path d="M282 229H289.5C294.194 229 298 232.806 298 237.5C298 242.194 294.194 246 289.5 246H282V229Z" fill="#BAE6FD"/>
+    </g>
+    <rect x="304" y="228" width="40" height="7" rx="3.5" fill="#0F172A"/>
+    <rect x="304" y="241" width="32" height="5" rx="2.5" fill="#0D9488"/>
+    <rect x="304" y="251" width="24" height="5" rx="2.5" fill="#94A3B8"/>
+  </g>
+
+  <!-- Floating Top-Right Bell Badge -->
+  <g filter="drop-shadow(0 6px 12px rgba(2,132,199,0.15))">
+    <circle cx="302" cy="112" r="24" fill="url(#blueCard)"/>
+    <path d="M302 100C297.5 100 294 103.5 294 108V114L291.5 117.5H312.5L310 114V108C310 103.5 306.5 100 302 100Z" stroke="#FFFFFF" stroke-width="2.2" stroke-linejoin="round"/>
+    <path d="M299.5 120.5C300.2 121.8 301 122.3 302 122.3C303 122.3 303.8 121.8 304.5 120.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="318" cy="96" r="6" fill="#10B981" stroke="#FFFFFF" stroke-width="2"/>
+  </g>
+</svg>

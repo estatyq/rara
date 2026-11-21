@@ -12,7 +12,7 @@ import {
 } from './index.js';
 
 describe('@dosemate/shared clinical & global utilities', () => {
-  it('classifies blood pressure accurately across pregnancy/hypertension thresholds', () => {
+  it('classifies blood pressure accurately across general hypertension thresholds', () => {
     expect(classifyBloodPressure(118, 76)).toBe(BpCategory.NORMAL);
     expect(classifyBloodPressure(134, 84)).toBe(BpCategory.ELEVATED);
     expect(classifyBloodPressure(142, 91)).toBe(BpCategory.HIGH);

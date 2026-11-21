@@ -11,13 +11,13 @@ export const BpCategory = {
 export type BpCategoryType = (typeof BpCategory)[keyof typeof BpCategory];
 
 /**
- * Informational triage ranges aligned with POGI / WHO / ESC pregnancy & hypertension guidelines.
+ * Informational triage ranges aligned with WHO / ESC / AHA / InaSH general hypertension guidelines.
  * Strictly Non-SaMD: supports self-tracking & pharmacist communication, NOT an automated diagnosis.
  */
 export const CLINICAL_GUIDELINE_CITATIONS = {
-  bpPregnancy: {
-    en: 'Reference ranges adapted from WHO (2020), ESC (2024), and POGI (Indonesia) gestational hypertension & preeclampsia guidelines. Informational only; not a medical diagnosis.',
-    id: 'Rentang acuan mengacu pada pedoman WHO (2020), ESC (2024), dan POGI (PNPK Preeklampsia). Bersifat informatif untuk pemantauan bersama apoteker/dokter dan bukan diagnosis medis.',
+  bpGeneral: {
+    en: 'Reference ranges adapted from WHO (2021), ESC (2024), AHA, and InaSH general hypertension management guidelines. Informational only; not a medical diagnosis.',
+    id: 'Rentang acuan mengacu pada pedoman WHO (2021), ESC (2024), AHA, dan InaSH (Perhimpunan Dokter Hipertensi Indonesia). Bersifat informatif untuk pemantauan bersama apoteker/dokter dan bukan diagnosis medis.',
   },
 } as const;
 
@@ -156,7 +156,7 @@ function toMinutes(hhmm: string): number {
 }
 
 /**
- * Detects classic absorption spacing conflicts in maternal/chronic therapy
+ * Detects classic absorption spacing conflicts in chronic pharmacotherapy
  * (e.g. Calcium taken within 2 hours of Iron/Fe or Levothyroxine).
  */
 export function checkMedicationSpacingWarnings(

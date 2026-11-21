@@ -79,8 +79,8 @@ export default function Login() {
 
           <div className="my-6 w-52 h-52 sm:w-60 sm:h-60 rounded-3xl overflow-hidden bg-white shadow-sm border border-teal-100/70 flex items-center justify-center">
             <img
-              src="/images/login-maternal.jpg"
-              alt="DoseMate maternal medication care"
+              src="/images/login-general-care.svg"
+              alt="DoseMate Medication Companion"
               className="w-full h-full object-cover"
             />
           </div>

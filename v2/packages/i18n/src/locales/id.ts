@@ -127,7 +127,7 @@ export const idResources = {
     criticalBannerBody: 'Segera cari pertolongan medis darurat atau hubungi fasilitas kesehatan terdekat. Sistem telah memicu peringatan ke apoteker penanggung jawab (SLA eskalasi 15 menit).',
     glucoseBadge: 'Dalam Pengembangan (Under Development)',
     glucoseTitle: 'Pemantauan Gula Darah',
-    glucoseDesc: 'Pencatatan gula darah puasa, 2 jam pasca makan, dan tren glikemik sedang disiapkan untuk mendukung pasien diabetes & diabetes gestasional.',
+    glucoseDesc: 'Pencatatan gula darah puasa, 2 jam pasca makan, dan tren glikemik sedang disiapkan untuk mendukung pemantauan pasien diabetes secara menyeluruh.',
     paramsTitle: 'Parameter Kesehatan Relevan Lainnya',
     addParam: 'Simpan Parameter',
     checkupsTitle: 'Pengingat Jadwal Kontrol & Follow-Up',

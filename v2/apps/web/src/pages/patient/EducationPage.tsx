@@ -49,7 +49,7 @@ export default function EducationPage() {
           {(data?.articles ?? []).map((art) => (
             <div key={art.id} className="bg-white rounded-3xl border border-teal-100 shadow-sm overflow-hidden flex flex-col">
               <div className="relative h-40 bg-teal-50">
-                <img src={art.coverImage || '/images/edu-hypertension.jpg'} alt={art.title} className="w-full h-full object-cover" />
+                <img src={art.coverImage || '/images/edu-bp-monitor.svg'} alt={art.title} className="w-full h-full object-cover" />
                 {art.durationLabel && (
                   <span className="absolute bottom-3 right-3 px-2 py-0.5 rounded-lg bg-slate-900/75 text-white text-[10px] font-bold flex items-center gap-1">
                     <Clock className="w-3 h-3" /> {art.durationLabel}

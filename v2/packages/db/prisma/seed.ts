@@ -78,7 +78,7 @@ async function main() {
       },
       branches: {
         create: {
-          name: 'Cabang Utama RSIA Mitra',
+          name: 'Cabang Utama Apotek Mitra',
           address: 'Jl. Perintis Kemerdekaan, Makassar',
           phone: '+6281299887766',
           timezone: TZ_ID,
@@ -200,8 +200,8 @@ async function main() {
           licenseType: 'STRA',
           licenseNumber: '19960512/STRA-UNHAS/2021/28491',
           issuingAuthority: 'Konsil Tenaga Kefarmasian Indonesia',
-          workplace: 'Instalasi Farmasi Klinis RSIA Mitra',
-          specialization: 'Farmasi Klinis, Kehamilan Risiko Tinggi & Preeklampsia',
+          workplace: 'Instalasi Farmasi Klinis Apotek Mitra',
+          specialization: 'Farmasi Klinis, Hipertensi & Terapi Penyakit Kronis',
           yearsExperience: 6,
           verificationStatus: 'VERIFIED',
           verifiedAt: new Date(),
@@ -213,7 +213,7 @@ async function main() {
           licenseType: 'SIPA',
           licenseNumber: '503/SIPA.042/DINKES-MKS/2023',
           issuingAuthority: 'Dinas Kesehatan Kota Makassar',
-          workplace: 'Instalasi Farmasi Klinis RSIA Mitra',
+          workplace: 'Instalasi Farmasi Klinis Apotek Mitra',
           specialization: 'Pemantauan Terapi Obat (PTO)',
           yearsExperience: 6,
           verificationStatus: 'VERIFIED',
@@ -237,32 +237,45 @@ async function main() {
     });
   }
 
-  // 3. Global Multi-Language Educational Articles & Videos (Translation Table Pattern!)
+  // 3. Global Multi-Language Educational Articles & Videos (General Patients — Translation Table Pattern!)
+  // Remove any legacy pregnancy-specific slugs if present from earlier seeds
+  await prisma.article.deleteMany({
+    where: {
+      slug: {
+        in: [
+          'hypertension-pregnancy-warning-signs',
+          'antihypertensive-safety-pregnancy',
+          'video-preeclampsia-safety',
+        ],
+      },
+    },
+  });
+
   const educationSeed = [
     {
-      slug: 'hypertension-pregnancy-warning-signs',
+      slug: 'hypertension-warning-signs-monitoring',
       category: 'Disease Education',
       mediaType: 'ARTICLE',
-      coverImage: '/images/edu-hypertension.jpg',
+      coverImage: '/images/edu-bp-monitor.svg',
       durationLabel: '4 min',
       drugName: null,
       translations: [
         {
           locale: 'id',
-          title: 'Hipertensi pada Kehamilan: Kenali Tanda dan Bahayanya',
-          summary: 'Panduan pemantauan tekanan darah mandiri dan 6 tanda bahaya preeklampsia yang wajib diwaspadai.',
-          body: '### Mengapa Pemantauan Tekanan Darah Penting?\nHipertensi kehamilan dan preeklampsia dapat berkembang cepat. Catat tekanan darah saat istirahat tenang 5 menit.\n\n### Tanda Bahaya Segera ke IGD\n- Tekanan darah ≥160/110 mmHg\n- Sakit kepala hebat tidak hilang dengan istirahat\n- Pandangan kabur atau berkunang-kunang\n- Nyeri ulu hati kanan atau sesak napas.',
+          title: 'Hipertensi & Pemantauan Tekanan Darah: Kenali Tanda Bahayanya',
+          summary: 'Panduan pemantauan tekanan darah mandiri di rumah dan tanda bahaya krisis hipertensi yang wajib diwaspadai.',
+          body: '### Mengapa Pemantauan Tekanan Darah Penting?\nHipertensi sering berlangsung tanpa gejala. Catat tekanan darah secara rutin setelah duduk tenang selama 5 menit agar apoteker dan dokter dapat mengevaluasi efektivitas terapi.\n\n### Tanda Bahaya Segera ke IGD\n- Tekanan darah ≥160/110 mmHg\n- Sakit kepala hebat yang tidak membaik dengan istirahat\n- Pandangan kabur atau nyeri dada\n- Sesak napas atau kelemahan mendadak.',
         },
         {
           locale: 'en',
-          title: 'Hypertension in Pregnancy: Recognizing Warning Signs',
-          summary: 'Home blood pressure tracking guide and 6 critical preeclampsia symptoms requiring urgent medical care.',
-          body: '### Why Blood Pressure Monitoring Matters\nGestational hypertension and preeclampsia can progress rapidly. Rest quietly for 5 minutes before measuring.\n\n### Seek Urgent Medical Care If:\n- Blood pressure reaches ≥160/110 mmHg\n- Severe headache unresponsive to rest\n- Blurred vision or flashing spots\n- Upper right abdominal pain or shortness of breath.',
+          title: 'Hypertension & Blood Pressure Monitoring: Warning Signs',
+          summary: 'Home blood pressure tracking guide and critical hypertensive symptoms requiring urgent medical care.',
+          body: '### Why Blood Pressure Monitoring Matters\nHypertension often has no obvious symptoms. Rest quietly for 5 minutes before measuring so your pharmacist and clinician can evaluate therapy response.\n\n### Seek Urgent Medical Care If:\n- Blood pressure reaches ≥160/110 mmHg\n- Severe headache unresponsive to rest\n- Blurred vision or chest pain\n- Shortness of breath or sudden weakness.',
         },
       ],
     },
     {
-      slug: 'antihypertensive-safety-pregnancy',
+      slug: 'antihypertensive-medication-safety',
       category: 'Medication Information',
       mediaType: 'ARTICLE',
       coverImage: '/images/edu-medications.jpg',
@@ -271,14 +284,14 @@ async function main() {
       translations: [
         {
           locale: 'id',
-          title: 'Penggunaan Obat Antihipertensi & Profilaksis yang Aman',
-          summary: 'Aturan minum, efek samping umum, dan pentingnya tidak menghentikan terapi secara mendadak.',
+          title: 'Penggunaan Obat Antihipertensi & Terapi Rutin yang Aman',
+          summary: 'Aturan minum, efek samping umum, dan pentingnya menjaga kepatuhan tanpa menghentikan terapi mendadak.',
           body: '### Aturan Minum Aman\nMinum obat pada jam yang sama setiap hari dengan bantuan alarm DoseMate. Jangan mengubah dosis atau berhenti minum obat tanpa konsultasi dokter/apoteker.\n\n### Efek Samping Umum\nPusing ringan saat berdiri atau bengkak ringan pada pergelangan kaki perlu dicatat dan dikonsultasikan di ruang chat apoteker.',
         },
         {
           locale: 'en',
-          title: 'Safe Use of Antihypertensive & Prophylactic Therapy',
-          summary: 'Dosing timing, common side effects, and why consistent adherence protects maternal & fetal health.',
+          title: 'Safe Use of Antihypertensive & Chronic Medications',
+          summary: 'Dosing timing, common side effects, and why consistent daily adherence protects long-term cardiovascular health.',
           body: '### Safe Dosing Principles\nTake prescribed medicines at the same time daily with DoseMate reminders. Never alter doses or discontinue therapy abruptly without consulting your clinician.\n\n### Managing Side Effects\nLog mild dizziness or ankle swelling and consult your clinical pharmacist directly in DoseMate Chat.',
         },
       ],
@@ -300,7 +313,7 @@ async function main() {
         {
           locale: 'en',
           title: 'Spacing Calcium & Iron Supplements by at Least 2 Hours',
-          summary: 'Why separating prenatal calcium and iron doses prevents absorption conflict and improves therapy.',
+          summary: 'Why separating daily calcium and iron doses prevents absorption conflict and improves therapy outcomes.',
           body: '### Absorption Interaction\nCalcium competes with iron absorption in the gut. Separate calcium tablets and iron supplements by at least **2 hours**. DoseMate automatically flags spacing conflicts in your schedule.',
         },
       ],
@@ -309,7 +322,7 @@ async function main() {
       slug: 'video-home-bp-measurement',
       category: 'Curated Materials',
       mediaType: 'VIDEO',
-      coverImage: '/images/edu-hypertension.jpg',
+      coverImage: '/images/edu-bp-monitor.svg',
       videoUrl: 'https://www.youtube.com/embed/0f4v5d8w1qU',
       durationLabel: '3:45',
       drugName: null,
@@ -329,25 +342,25 @@ async function main() {
       ],
     },
     {
-      slug: 'video-preeclampsia-safety',
+      slug: 'video-medication-safety-red-flags',
       category: 'Side Effects & Safety',
       mediaType: 'VIDEO',
       coverImage: '/images/edu-medications.jpg',
       videoUrl: 'https://www.youtube.com/embed/7n3r2wK5v1E',
       durationLabel: '4:15',
-      drugName: 'Aspirin 80 mg',
+      drugName: 'Amlodipine / Aspirin',
       translations: [
         {
           locale: 'id',
-          title: 'Video Konseling: Keamanan Obat & Tanda Bahaya Preeklampsia',
-          summary: 'Penjelasan apoteker klinis tentang efek samping obat dan gejala darurat selama kehamilan.',
-          body: 'Waspadai sakit kepala hebat, pandangan kabur, nyeri perut kanan atas, atau tekanan darah ≥160/110 mmHg. Segera hubungi fasilitas kesehatan.',
+          title: 'Video Konseling: Keamanan Obat & Tanda Bahaya Tekanan Darah',
+          summary: 'Penjelasan apoteker klinis tentang efek samping obat harian dan gejala darurat yang perlu segera ditangani.',
+          body: 'Waspadai sakit kepala hebat, pandangan kabur, nyeri dada, sesak napas, atau tekanan darah ≥160/110 mmHg. Segera hubungi fasilitas kesehatan.',
         },
         {
           locale: 'en',
-          title: 'Counseling Video: Medication Safety & Preeclampsia Red Flags',
-          summary: 'Clinical pharmacist overview of expected mild side effects versus urgent symptoms.',
-          body: 'Seek immediate medical care for severe headaches, visual disturbances, upper right abdominal pain, or BP ≥160/110 mmHg.',
+          title: 'Counseling Video: Medication Safety & Hypertension Red Flags',
+          summary: 'Clinical pharmacist overview of expected mild side effects versus urgent symptoms requiring immediate care.',
+          body: 'Seek immediate medical care for severe headaches, visual disturbances, chest pain, shortness of breath, or BP ≥160/110 mmHg.',
         },
       ],
     },
@@ -481,7 +494,7 @@ async function main() {
       phone: '+6281234567890',
       name: 'Aisyah Rahmadani',
       studyCode: 'P-001',
-      diagnosis: 'Kehamilan risiko tinggi, hipertensi kronis ringan',
+      diagnosis: 'Hipertensi esensial derajat I — pemantauan terapi rutin',
       meds: [
         {
           displayName: 'Aspirin dosis rendah',
@@ -519,7 +532,7 @@ async function main() {
       phone: '+6281211112222',
       name: 'Siti Rahmawati',
       studyCode: 'P-002',
-      diagnosis: 'Hipertensi gestasional — pemantauan risiko preeklampsia',
+      diagnosis: 'Hipertensi tidak terkontrol — evaluasi kepatuhan Amlodipine',
       meds: [
         {
           displayName: 'Amlodipine',
@@ -544,7 +557,7 @@ async function main() {
       phone: '+6281233334444',
       name: 'Dewi Lestari',
       studyCode: 'P-003',
-      diagnosis: 'Hipertensi kronis kehamilan trimester II',
+      diagnosis: 'Hipertensi kronis — pemantauan terapi antihipertensi',
       meds: [
         {
           displayName: 'Metildopa',
@@ -569,7 +582,7 @@ async function main() {
       phone: '+6281255556666',
       name: 'Nur Aisyah',
       studyCode: 'P-004',
-      diagnosis: 'Profilaksis preeklampsia ringan',
+      diagnosis: 'Terapi pencegahan kardiovaskular & kontrol tekanan darah',
       meds: [
         {
           displayName: 'Aspirin dosis rendah',
@@ -605,12 +618,11 @@ async function main() {
 
     const profile = await prisma.patientProfile.upsert({
       where: { userId: user.id },
-      update: { diagnosis: item.diagnosis },
+      update: { diagnosis: item.diagnosis, estimatedDueDate: null },
       create: {
         userId: user.id,
         gender: 'FEMALE',
         diagnosis: item.diagnosis,
-        estimatedDueDate: DateTime.now().setZone(TZ_ID).plus({ weeks: 8, days: 3 }).toJSDate(),
         baselineSystolic: item.bpSeries[0]?.[0] ?? 130,
         baselineDiastolic: item.bpSeries[0]?.[1] ?? 84,
       },
@@ -743,10 +755,10 @@ async function main() {
               patientId: profile.id,
               tenantId: tenantId.id,
               createdById: pharmacistId.id,
-              title: 'Kontrol Antenatal (ANC) & Evaluasi Tekanan Darah',
+              title: 'Kontrol Rutin & Evaluasi Tekanan Darah',
               type: 'CHECKUP',
               scheduledAt: DateTime.now().setZone(TZ_ID).plus({ days: 3 }).set({ hour: 9, minute: 30 }).toJSDate(),
-              location: 'Poli Obgyn RSIA Mitra',
+              location: 'Klinik & Apotek Mitra',
               status: 'UPCOMING',
             },
             {
@@ -783,7 +795,7 @@ async function main() {
             type: 'PTO_REPORT',
             subjective: 'Tidak ada sakit kepala berat atau gangguan penglihatan.',
             objective: 'TD terakhir 122/78 mmHg (Terkontrol). Kepatuhan 7 hari ~90%.',
-            assessment: 'Terapi profilaksis preeklampsia efektif dan ditoleransi dengan baik.',
+            assessment: 'Terapi antihipertensi dan suplementasi harian efektif serta ditoleransi dengan baik.',
             plan: 'Lanjutkan Aspirin 80 mg pagi & Kalsium 500 mg 2x1 dengan jeda minimal 2 jam dari zat besi.',
             drpCategory: 'NONE',
             recommendation: 'Pertahankan alarm DoseMate dan ukur tekanan darah 2x seminggu.',
@@ -826,6 +838,33 @@ async function main() {
       pharmacistId: pharmacistSg.id,
       studyCode: 'SG-001',
       status: 'ACTIVE',
+    },
+  });
+
+  // Idempotent cleanup for previously seeded dev databases
+  await prisma.branch.updateMany({
+    where: { name: 'Cabang Utama RSIA Mitra' },
+    data: { name: 'Cabang Utama Apotek Mitra' },
+  });
+  await prisma.pharmacistCredential.updateMany({
+    where: { workplace: 'Instalasi Farmasi Klinis RSIA Mitra' },
+    data: { workplace: 'Instalasi Farmasi Klinis Apotek Mitra' },
+  });
+  await prisma.pharmacistCredential.updateMany({
+    where: { specialization: { contains: 'Kehamilan' } },
+    data: { specialization: 'Farmasi Klinis, Hipertensi & Terapi Penyakit Kronis' },
+  });
+  await prisma.checkupReminder.updateMany({
+    where: { title: 'Kontrol Antenatal (ANC) & Evaluasi Tekanan Darah' },
+    data: {
+      title: 'Kontrol Rutin & Evaluasi Tekanan Darah',
+      location: 'Klinik & Apotek Mitra',
+    },
+  });
+  await prisma.patientFollowUp.updateMany({
+    where: { assessment: { contains: 'preeklampsia' } },
+    data: {
+      assessment: 'Terapi antihipertensi dan suplementasi harian efektif serta ditoleransi dengan baik.',
     },
   });
 

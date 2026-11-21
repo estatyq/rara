@@ -301,7 +301,7 @@ export default function HealthMonitorPage() {
             className="lg:col-span-5 bg-white rounded-3xl p-6 border border-teal-100 shadow-sm space-y-4"
           >
             <h2 className="text-base font-extrabold text-slate-900">{t('health:addCheckup')}</h2>
-            <input required value={checkupTitle} onChange={(e) => setCheckupTitle(e.target.value)} placeholder="ANC / PTO Check-Up" className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F6FBFA] border border-teal-100 text-sm" />
+            <input required value={checkupTitle} onChange={(e) => setCheckupTitle(e.target.value)} placeholder="Routine Check-Up / PTO Follow-Up" className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F6FBFA] border border-teal-100 text-sm" />
             <input type="datetime-local" required value={checkupDate} onChange={(e) => setCheckupDate(e.target.value)} className="w-full px-3.5 py-2.5 rounded-2xl bg-[#F6FBFA] border border-teal-100 text-xs" />
             <button type="submit" className="w-full py-3 rounded-full bg-teal-600 text-white font-bold text-sm flex items-center justify-center gap-1.5">
               <Plus className="w-4 h-4" /> {t('health:addCheckup')}

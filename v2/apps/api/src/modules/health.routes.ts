@@ -38,7 +38,7 @@ export async function healthRoutes(app: FastifyInstance) {
     });
 
     return {
-      citation: CLINICAL_GUIDELINE_CITATIONS.bpPregnancy[ctx.locale],
+      citation: CLINICAL_GUIDELINE_CITATIONS.bpGeneral[ctx.locale],
       logs: logs.map((l) => ({
         ...l,
         category: classifyBloodPressure(l.systolic, l.diastolic),
