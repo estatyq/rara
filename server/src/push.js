@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import webpush from 'web-push';
 import { config } from './config.js';
 import { prisma } from './db.js';
@@ -14,6 +15,9 @@ export function initPush() {
     } catch {
       keys = webpush.generateVAPIDKeys();
       try {
+        if (typeof config.vapid.file === 'string') {
+          fs.mkdirSync(path.dirname(config.vapid.file), { recursive: true });
+        }
         fs.writeFileSync(config.vapid.file, JSON.stringify(keys, null, 2));
       } catch (e) {
         console.warn('[push] could not persist generated VAPID keys:', e.message);

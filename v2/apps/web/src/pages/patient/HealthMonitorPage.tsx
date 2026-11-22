@@ -138,7 +138,7 @@ export default function HealthMonitorPage() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Large DoseMate Screen 4 Pill Inputs */}
+            {/* Large DoseLynx Screen 4 Pill Inputs */}
             <form onSubmit={submitBp} className="lg:col-span-5 bg-white rounded-3xl p-6 border border-teal-100 shadow-sm space-y-4">
               <div className="text-center">
                 <div className="w-14 h-14 mx-auto rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mb-3">

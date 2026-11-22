@@ -4,8 +4,8 @@
  * with native Local Alarms (USE_EXACT_ALARM), FCM/APNs Push, Keychain/Keystore Auth & Biometrics.
  */
 const config = {
-  appId: 'health.dosemate.app',
-  appName: 'DoseMate',
+  appId: 'com.doselynx.app',
+  appName: 'DoseLynx',
   webDir: 'dist',
   server: {
     androidScheme: 'https',
@@ -13,9 +13,9 @@ const config = {
   },
   plugins: {
     LocalNotifications: {
-      smallIcon: 'ic_stat_dosemate',
+      smallIcon: 'ic_stat_doselynx',
       iconColor: '#0D9488',
-      sound: 'dosemate_chime.wav',
+      sound: 'doselynx_chime.wav',
     },
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert'],

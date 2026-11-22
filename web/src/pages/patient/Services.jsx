@@ -94,8 +94,8 @@ export default function PatientServices() {
     if (digits.startsWith('0')) digits = `62${digits.slice(1)}`;
     const text =
       lang === 'id'
-        ? `Halo Apoteker ${name}, saya pasien Apoteku ingin berkonsultasi mengenai terapi obat saya.`
-        : `Hello Pharmacist ${name}, I am an Apoteku patient and would like to consult about my medication.`;
+        ? `Halo Apoteker ${name}, saya pasien DoseLynx ingin berkonsultasi mengenai terapi obat saya.`
+        : `Hello Pharmacist ${name}, I am a DoseLynx patient and would like to consult about my medication.`;
     return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
   };
 

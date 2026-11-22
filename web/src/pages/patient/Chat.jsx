@@ -104,7 +104,7 @@ export default function PatientChat() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 h-[calc(100vh-5.5rem)] flex flex-col">
-      {/* Pharmacist Header matching DoseMate Screen 6 */}
+      {/* Pharmacist Header matching DoseLynx Screen 6 */}
       <div className="bg-white p-4 rounded-3xl border border-teal-100 shadow-sm flex items-center justify-between gap-3 shrink-0 mb-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-11 h-11 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
@@ -187,7 +187,7 @@ export default function PatientChat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Composer + Connected Pharmacist Footer (DoseMate Screen 6) */}
+      {/* Input Composer + Connected Pharmacist Footer (DoseLynx Screen 6) */}
       <form onSubmit={handleSend} className="mt-3 flex items-center gap-2 shrink-0">
         <input
           type="text"

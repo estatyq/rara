@@ -27,7 +27,7 @@ const EnvSchema = z.object({
 
 const parsed = EnvSchema.safeParse(process.env);
 if (!parsed.success) {
-  console.error('[dosemate-api] Invalid environment configuration:', parsed.error.flatten().fieldErrors);
+  console.error('[doselynx-api] Invalid environment configuration:', parsed.error.flatten().fieldErrors);
   process.exit(1);
 }
 

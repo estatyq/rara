@@ -161,7 +161,7 @@ export default function PatientDashboard() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-      {/* Greeting Row matching DoseMate Mobile Mockup */}
+      {/* Greeting Row matching DoseLynx Mobile Mockup */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -194,7 +194,7 @@ export default function PatientDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Primary Column */}
         <div className="lg:col-span-7 space-y-5">
-          {/* Soft-Mint Today's Adherence Highlight Card (DoseMate Screen 2) */}
+          {/* Soft-Mint Today's Adherence Highlight Card (DoseLynx Screen 2) */}
           <div className="bg-gradient-to-br from-[#DFF6EC] via-[#E9F9F2] to-[#E6F4F9] rounded-3xl p-5 sm:p-6 border border-emerald-200/70 shadow-sm flex items-center justify-between gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider text-teal-800">
@@ -217,7 +217,7 @@ export default function PatientDashboard() {
             </div>
           </div>
 
-          {/* Next Medication Spotlight Card (DoseMate Screen 2) */}
+          {/* Next Medication Spotlight Card (DoseLynx Screen 2) */}
           {nextDose && (
             <div className="bg-white rounded-3xl p-5 border border-teal-100 shadow-sm space-y-4">
               <div className="flex items-center justify-between">
@@ -277,7 +277,7 @@ export default function PatientDashboard() {
             </div>
           )}
 
-          {/* 3x2 Quick Action Grid (Exact DoseMate Screen 2 layout) */}
+          {/* 3x2 Quick Action Grid (Exact DoseLynx Screen 2 layout) */}
           <div className="grid grid-cols-3 gap-3">
             {quickActions.map((item) => {
               const Icon = item.icon;

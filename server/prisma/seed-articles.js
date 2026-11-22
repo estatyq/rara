@@ -41,7 +41,7 @@ Preeclampsia is a pregnancy condition marked by elevated blood pressure and sign
 Contact a healthcare facility immediately if your blood pressure is 160/110 mmHg or higher, or if any of the signs above appear. Do not wait for your next appointment.
 
 ### What you can do at home
-Measure while calm, record each reading in DoseMate, take medicines exactly as prescribed, and attend antenatal appointments. Do not change a dose on your own.`,
+Measure while calm, record each reading in DoseLynx, take medicines exactly as prescribed, and attend antenatal appointments. Do not change a dose on your own.`,
     published: true,
   },
   {
@@ -139,7 +139,7 @@ Kalsium dibutuhkan untuk pertumbuhan tulang bayi dan kesehatan ibu. Pada ibu ham
 ### Cara minum yang benar
 - Ikuti dosis yang tertulis pada resep atau rekomendasi apoteker.
 - Beri jeda minimal 2 jam dari tablet zat besi (Fe) karena kalsium dapat mengurangi penyerapan zat besi.
-- Bila dosis lebih dari satu kali sehari, bagi ke pagi dan malam hari sesuai jadwal alarm DoseMate.
+- Bila dosis lebih dari satu kali sehari, bagi ke pagi dan malam hari sesuai jadwal alarm DoseLynx.
 
 ### Hal yang perlu dikonsultasikan
 Catat bila muncul sembelit, nyeri perut, atau keluhan baru. Jangan menggandakan dosis karena merasa sudah melewatkan satu jadwal.`,
@@ -149,7 +149,7 @@ Calcium supports fetal bone growth and maternal vascular health. When dietary ca
 ### Proper administration
 - Follow the prescribed dose or your care team's recommendation.
 - Space calcium at least 2 hours apart from iron (Fe) tablets because calcium reduces iron absorption.
-- If the daily dose is split, use DoseMate alarms for morning and evening spacing.
+- If the daily dose is split, use DoseLynx alarms for morning and evening spacing.
 
 ### What to discuss
 Record new constipation, abdominal discomfort, or other symptoms. Never double a missed dose.`,
@@ -173,7 +173,7 @@ Record new constipation, abdominal discomfort, or other symptoms. Never double a
 - Hindari berbicara atau minum kafein 30 menit sebelum pengukuran.
 
 ### Saat mengukur
-Gunakan manset dengan ukuran yang sesuai. Lakukan dua pengukuran dengan jeda sekitar satu menit, lalu catat hasilnya di DoseMate. Gunakan lengan yang sama setiap kali.
+Gunakan manset dengan ukuran yang sesuai. Lakukan dua pengukuran dengan jeda sekitar satu menit, lalu catat hasilnya di DoseLynx. Gunakan lengan yang sama setiap kali.
 
 ### Setelah mengukur
 Catat tanggal, waktu, nilai sistolik dan diastolik, serta keluhan yang dirasakan. Jangan menunda bantuan medis bila nilai mencapai ≥160/110 mmHg atau disertai gejala berat.`,
@@ -184,7 +184,7 @@ Catat tanggal, waktu, nilai sistolik dan diastolik, serta keluhan yang dirasakan
 - Avoid talking or caffeine 30 minutes before measuring.
 
 ### During measurement
-Use a properly sized cuff. Take two readings about one minute apart and record them in DoseMate. Use the same arm consistently.
+Use a properly sized cuff. Take two readings about one minute apart and record them in DoseLynx. Use the same arm consistently.
 
 ### After measuring
 Record the date, time, systolic/diastolic numbers, and any symptoms. Never delay urgent medical care if readings reach ≥160/110 mmHg or severe warning signs appear.`,
@@ -205,14 +205,14 @@ Record the date, time, systolic/diastolic numbers, and any symptoms. Never delay
 Obat bekerja dengan mempertahankan kadar terapeutik yang stabil di dalam tubuh sepanjang hari. Jika Anda terlambat atau melewatkan dosis, kadar obat turun dan efektivitas perlindungan berkurang.
 
 ### Tips Praktis dari Apoteker
-1. Gunakan pengingat DoseMate untuk mencatat setiap kali minum obat.
+1. Gunakan pengingat DoseLynx untuk mencatat setiap kali minum obat.
 2. Kaitkan jadwal obat dengan rutinitas harian (misal setelah sarapan atau sebelum tidur).
 3. Konsultasikan segera jika muncul mual atau efek samping sebelum memutuskan berhenti minum obat.`,
     bodyEn: `### Why Punctuality Matters
 Medications work by maintaining a steady therapeutic level in your bloodstream. Skipping or delaying doses causes drug levels to drop, leaving you less protected.
 
 ### Practical Pharmacist Tips
-1. Confirm each dose in DoseMate as soon as you take it.
+1. Confirm each dose in DoseLynx as soon as you take it.
 2. Pair medication times with daily routines such as breakfast or bedtime.
 3. Message your pharmacist right away if side effects occur instead of stopping therapy on your own.`,
     published: true,
@@ -257,16 +257,16 @@ Mild nausea or bloating usually improves within days. Avoid skipping meals after
     drugName: null,
     titleId: 'Video Panduan: Langkah Tepat Mengukur Tekanan Darah di Rumah',
     titleEn: 'Video Guide: Step-by-Step Home Blood Pressure Measurement',
-    summaryId: 'Demonstrasi visual posisi duduk, pemasangan manset, dan cara mencatat hasil pengukuran ke DoseMate.',
-    summaryEn: 'Visual demonstration of proper posture, cuff placement, and logging accurate readings in DoseMate.',
+    summaryId: 'Demonstrasi visual posisi duduk, pemasangan manset, dan cara mencatat hasil pengukuran ke DoseLynx.',
+    summaryEn: 'Visual demonstration of proper posture, cuff placement, and logging accurate readings in DoseLynx.',
     bodyId: `### Ringkasan Materi Video
 1. **Istirahat 5 menit** sebelum pengukuran tanpa aktivitas fisik berat.
 2. **Posisi manset** sejajar jantung pada lengan atas yang tidak tertutup baju tebal.
-3. **Catat 2 kali pengukuran** dengan jeda 1 menit, lalu simpan langsung di menu *Pantau Kesehatan* DoseMate.`,
+3. **Catat 2 kali pengukuran** dengan jeda 1 menit, lalu simpan langsung di menu *Pantau Kesehatan* DoseLynx.`,
     bodyEn: `### Video Key Takeaways
 1. **Rest quietly for 5 minutes** prior to measuring.
 2. **Place the cuff** at heart level directly on a bare upper arm.
-3. **Take 2 readings** one minute apart and record them immediately in DoseMate Health Monitoring.`,
+3. **Take 2 readings** one minute apart and record them immediately in DoseLynx Health Monitoring.`,
     published: true,
   },
   {
@@ -306,11 +306,11 @@ Mild nausea or bloating usually improves within days. Avoid skipping meals after
     bodyId: `### Poin Konseling Apoteker
 - **Pagi (07:00):** Aspirin dosis rendah & Kalsium dosis pertama setelah sarapan.
 - **Siang / Jeda ≥2 jam:** Jika ada suplemen zat besi (Fe), pisahkan dari kalsium.
-- **Malam (19:00):** Kalsium dosis kedua dengan pengingat alarm DoseMate.`,
+- **Malam (19:00):** Kalsium dosis kedua dengan pengingat alarm DoseLynx.`,
     bodyEn: `### Pharmacist Counseling Summary
 - **Morning (07:00):** Low-dose aspirin & first calcium dose after breakfast.
 - **Midday (≥2h spacing):** Keep iron supplements separated from calcium tablets.
-- **Evening (19:00):** Second calcium dose supported by DoseMate in-app & WhatsApp alarms.`,
+- **Evening (19:00):** Second calcium dose supported by DoseLynx in-app & WhatsApp alarms.`,
     published: true,
   },
 ];

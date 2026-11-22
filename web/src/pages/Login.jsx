@@ -5,6 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../i18n/LanguageContext';
 import DoseMateLogo from '../components/DoseMateLogo';
 
+const SHOW_DEMO = import.meta.env.VITE_ENABLE_DEMO !== 'false';
+
 export default function Login() {
   const { login } = useAuth();
   const { t, lang, setLang } = useLanguage();
@@ -73,14 +75,14 @@ export default function Login() {
       </div>
 
       <div className="max-w-4xl w-full mx-auto bg-white rounded-[2rem] shadow-xl shadow-teal-900/5 border border-teal-100/80 overflow-hidden grid grid-cols-1 md:grid-cols-2">
-        {/* Left Splash Panel matching DoseMate mockup */}
+        {/* Left Splash Panel matching DoseLynx mockup */}
         <div className="bg-gradient-to-b from-[#EDF9F8] via-white to-[#E6F4F9] p-8 sm:p-10 flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-r border-teal-100/70">
           <DoseMateLogo centered size="lg" showSubtitle subtitle={t.brandSubtitle} />
 
           <div className="my-6 w-52 h-52 sm:w-60 sm:h-60 rounded-3xl overflow-hidden bg-white shadow-sm border border-teal-100/70 flex items-center justify-center">
             <img
               src="/images/login-general-care.svg"
-              alt="DoseMate Medication Companion"
+              alt="DoseLynx Medication Companion"
               className="w-full h-full object-cover"
             />
           </div>
@@ -159,48 +161,50 @@ export default function Login() {
           </div>
 
           {/* Quick Demo Accounts */}
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5 text-center">
-              {t.auth.demoAccounts}
-            </p>
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('pasien@rara.local', 'pasien123', 'patient')}
-                className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-semibold text-teal-800 bg-teal-50/80 hover:bg-teal-100/80 rounded-xl border border-teal-100 transition"
-              >
-                <span className="flex items-center gap-2">
-                  <HeartPulse className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                  <span>{t.auth.patientDemo}</span>
-                </span>
-                <span className="text-[10px] text-teal-600 font-mono">pasien123</span>
-              </button>
+          {SHOW_DEMO && (
+            <div className="mt-6 pt-5 border-t border-slate-100">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2.5 text-center">
+                {t.auth.demoAccounts}
+              </p>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin('pasien@doselynx.com', 'pasien123', 'patient')}
+                  className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-semibold text-teal-800 bg-teal-50/80 hover:bg-teal-100/80 rounded-xl border border-teal-100 transition"
+                >
+                  <span className="flex items-center gap-2">
+                    <HeartPulse className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                    <span>{t.auth.patientDemo}</span>
+                  </span>
+                  <span className="text-[10px] text-teal-600 font-mono">pasien123</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('apoteker@rara.local', 'apoteker123', 'staff')}
-                className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-semibold text-sky-900 bg-sky-50/80 hover:bg-sky-100/80 rounded-xl border border-sky-100 transition"
-              >
-                <span className="flex items-center gap-2">
-                  <UserCheck className="w-3.5 h-3.5 text-sky-600 shrink-0" />
-                  <span>{t.auth.pharmacistDemo}</span>
-                </span>
-                <span className="text-[10px] text-sky-600 font-mono">apoteker123</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin('apoteker@doselynx.com', 'apoteker123', 'staff')}
+                  className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-semibold text-sky-900 bg-sky-50/80 hover:bg-sky-100/80 rounded-xl border border-sky-100 transition"
+                >
+                  <span className="flex items-center gap-2">
+                    <UserCheck className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                    <span>{t.auth.pharmacistDemo}</span>
+                  </span>
+                  <span className="text-[10px] text-sky-600 font-mono">apoteker123</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleDemoLogin('admin@rara.local', 'admin123', 'staff')}
-                className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200/80 transition"
-              >
-                <span className="flex items-center gap-2">
-                  <ShieldCheck className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                  <span>{t.auth.adminDemo}</span>
-                </span>
-                <span className="text-[10px] text-slate-500 font-mono">admin123</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin('admin@doselynx.com', 'admin123', 'staff')}
+                  className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200/80 transition"
+                >
+                  <span className="flex items-center gap-2">
+                    <ShieldCheck className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                    <span>{t.auth.adminDemo}</span>
+                  </span>
+                  <span className="text-[10px] text-slate-500 font-mono">admin123</span>
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

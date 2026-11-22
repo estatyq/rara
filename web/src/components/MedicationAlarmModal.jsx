@@ -7,7 +7,7 @@ import { DoseMateMark } from './DoseMateLogo';
 
 /**
  * Full-screen calm medication reminder & intake confirmation modal
- * modeled directly on the DoseMate "Pengingat & Konfirmasi Obat" screen.
+ * modeled directly on the DoseLynx "Pengingat & Konfirmasi Obat" screen.
  */
 export default function MedicationAlarmModal() {
   const { t } = useLanguage();
@@ -42,7 +42,7 @@ export default function MedicationAlarmModal() {
           <DoseMateMark className="w-8 h-8 mt-0.5" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-extrabold text-teal-800">DoseMate</span>
+              <span className="text-xs font-extrabold text-teal-800">DoseLynx</span>
               <span className="text-[10px] font-medium text-slate-400">
                 {activeAlert.time || t.alarm.nowLabel}
               </span>
@@ -77,7 +77,7 @@ export default function MedicationAlarmModal() {
           )}
         </div>
 
-        {/* Action Buttons matching DoseMate Mockup */}
+        {/* Action Buttons matching DoseLynx Mockup */}
         <div className="space-y-3">
           <button
             type="button"

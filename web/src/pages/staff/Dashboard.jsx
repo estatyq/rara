@@ -227,10 +227,10 @@ export default function StaffDashboard() {
         </div>
       </div>
 
-      {/* ================= OVERVIEW KPIs & 3-COLUMN WIDGETS (DoseMate Mockup) ================= */}
+      {/* ================= OVERVIEW KPIs & 3-COLUMN WIDGETS (DoseLynx Mockup) ================= */}
       {showOverview && (
         <>
-          {/* 4 KPI Cards matching DoseMate Dashboard Web Farmasis */}
+          {/* 4 KPI Cards matching DoseLynx Dashboard Web Farmasis */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white rounded-3xl p-5 border border-teal-100/80 shadow-xs flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">

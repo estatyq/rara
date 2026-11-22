@@ -10,10 +10,10 @@ async function start() {
   await initRealtime(app.server);
 
   await app.listen({ port: env.API_PORT, host: '0.0.0.0' });
-  app.log.info(`[dosemate-v2] API listening on http://localhost:${env.API_PORT} (OpenAPI docs: /docs)`);
+  app.log.info(`[doselynx-v2] API listening on http://localhost:${env.API_PORT} (OpenAPI docs: /docs)`);
 
   const shutdown = async () => {
-    app.log.info('Gracefully shutting down DoseMate API v2...');
+    app.log.info('Gracefully shutting down DoseLynx API v2...');
     await closeRealtime();
     await closeQueues();
     await app.close();
@@ -26,6 +26,6 @@ async function start() {
 }
 
 start().catch((err) => {
-  console.error('[dosemate-v2] Fatal boot error:', err);
+  console.error('[doselynx-v2] Fatal boot error:', err);
   process.exit(1);
 });

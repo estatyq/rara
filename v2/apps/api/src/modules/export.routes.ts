@@ -73,7 +73,7 @@ export async function exportRoutes(app: FastifyInstance) {
       }
     }
 
-    return sendStreamingCsv(reply, `dosemate-patients-${new Date().toISOString().slice(0, 10)}.csv`, header, rows());
+    return sendStreamingCsv(reply, `doselynx-patients-${new Date().toISOString().slice(0, 10)}.csv`, header, rows());
   });
 
   app.get('/blood-pressure.csv', { preHandler: [requireTenantStaff] }, async (req, reply) => {
@@ -145,6 +145,6 @@ export async function exportRoutes(app: FastifyInstance) {
       }
     }
 
-    return sendStreamingCsv(reply, `dosemate-bp-${new Date().toISOString().slice(0, 10)}.csv`, header, rows());
+    return sendStreamingCsv(reply, `doselynx-bp-${new Date().toISOString().slice(0, 10)}.csv`, header, rows());
   });
 }

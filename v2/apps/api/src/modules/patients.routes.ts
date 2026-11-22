@@ -18,7 +18,7 @@ import { notFound } from '../lib/errors.js';
 export async function patientRoutes(app: FastifyInstance) {
   /**
    * Pharmacist Web Dashboard Summary — strictly tenant-isolated via PostgreSQL RLS (`withTenant`)!
-   * Powers the DoseMate Dashboard Web Farmasis: 4 KPIs, Patients at Risk, Dual-Line Trend, Recent Activity.
+   * Powers the DoseLynx Dashboard Web Farmasis: 4 KPIs, Patients at Risk, Dual-Line Trend, Recent Activity.
    */
   app.get('/dashboard-summary', { preHandler: [requireTenantStaff] }, async (req) => {
     const query = z.object({

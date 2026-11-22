@@ -18,32 +18,32 @@ async function upsertUser(input: {
   privacyMode?: boolean;
 }) {
   const passwordHash = await hash(input.password);
-  return prisma.user.upsert({
-    where: { email: input.email },
-    update: {
-      name: input.name,
-      phone: input.phone ?? null,
-      globalRole: input.globalRole,
-      passwordHash,
-      locale: input.locale ?? 'id',
-      timezone: input.timezone ?? TZ_ID,
-      countryCode: input.countryCode ?? 'ID',
-      privacyMode: input.privacyMode ?? true,
-      active: true,
-    },
-    create: {
-      email: input.email,
-      name: input.name,
-      phone: input.phone ?? null,
-      globalRole: input.globalRole,
-      passwordHash,
-      locale: input.locale ?? 'id',
-      timezone: input.timezone ?? TZ_ID,
-      countryCode: input.countryCode ?? 'ID',
-      privacyMode: input.privacyMode ?? true,
+  const orConditions: Array<{ email: string } | { phone: string }> = [{ email: input.email }];
+  if (input.phone) orConditions.push({ phone: input.phone });
+  const existing = await prisma.user.findFirst({ where: { OR: orConditions } });
+  const data = {
+    email: input.email,
+    name: input.name,
+    phone: input.phone ?? null,
+    globalRole: input.globalRole,
+    passwordHash,
+    locale: input.locale ?? 'id',
+    timezone: input.timezone ?? TZ_ID,
+    countryCode: input.countryCode ?? 'ID',
+    privacyMode: input.privacyMode ?? true,
+    active: true,
+  };
+  if (existing) {
+    return prisma.user.update({
+      where: { id: existing.id },
+      data,
+    });
+  }
+  return prisma.user.create({
+    data: {
+      ...data,
       emailVerifiedAt: new Date(),
       phoneVerifiedAt: input.phone ? new Date() : null,
-      active: true,
     },
   });
 }
@@ -128,15 +128,15 @@ async function main() {
 
   // 2. Super Admin & Verified Pharmacists
   const superAdmin = await upsertUser({
-    email: 'admin@dosemate.health',
+    email: 'admin@doselynx.com',
     password: 'admin1234',
-    name: 'Admin Sistem DoseMate',
+    name: 'Admin Sistem DoseLynx',
     phone: '+628110000100',
     globalRole: 'SUPER_ADMIN',
   });
 
   const pharmacistId = await upsertUser({
-    email: 'apoteker@dosemate.health',
+    email: 'apoteker@doselynx.com',
     password: 'apoteker1234',
     name: 'Rabiatul Adawiah, S.Farm., Apt.',
     phone: '+6281299887766',
@@ -286,13 +286,13 @@ async function main() {
           locale: 'id',
           title: 'Penggunaan Obat Antihipertensi & Terapi Rutin yang Aman',
           summary: 'Aturan minum, efek samping umum, dan pentingnya menjaga kepatuhan tanpa menghentikan terapi mendadak.',
-          body: '### Aturan Minum Aman\nMinum obat pada jam yang sama setiap hari dengan bantuan alarm DoseMate. Jangan mengubah dosis atau berhenti minum obat tanpa konsultasi dokter/apoteker.\n\n### Efek Samping Umum\nPusing ringan saat berdiri atau bengkak ringan pada pergelangan kaki perlu dicatat dan dikonsultasikan di ruang chat apoteker.',
+          body: '### Aturan Minum Aman\nMinum obat pada jam yang sama setiap hari dengan bantuan alarm DoseLynx. Jangan mengubah dosis atau berhenti minum obat tanpa konsultasi dokter/apoteker.\n\n### Efek Samping Umum\nPusing ringan saat berdiri atau bengkak ringan pada pergelangan kaki perlu dicatat dan dikonsultasikan di ruang chat apoteker.',
         },
         {
           locale: 'en',
           title: 'Safe Use of Antihypertensive & Chronic Medications',
           summary: 'Dosing timing, common side effects, and why consistent daily adherence protects long-term cardiovascular health.',
-          body: '### Safe Dosing Principles\nTake prescribed medicines at the same time daily with DoseMate reminders. Never alter doses or discontinue therapy abruptly without consulting your clinician.\n\n### Managing Side Effects\nLog mild dizziness or ankle swelling and consult your clinical pharmacist directly in DoseMate Chat.',
+          body: '### Safe Dosing Principles\nTake prescribed medicines at the same time daily with DoseLynx reminders. Never alter doses or discontinue therapy abruptly without consulting your clinician.\n\n### Managing Side Effects\nLog mild dizziness or ankle swelling and consult your clinical pharmacist directly in DoseLynx Chat.',
         },
       ],
     },
@@ -308,13 +308,13 @@ async function main() {
           locale: 'id',
           title: 'Cara Minum Kalsium & Jeda 2 Jam dengan Tablet Zat Besi',
           summary: 'Mengapa kalsium dan zat besi (Fe) tidak boleh diminum bersamaan agar penyerapan tetap optimal.',
-          body: '### Interaksi Penyerapan\nKalsium dapat menghambat penyerapan zat besi di saluran cerna. Beri jeda minimal **2 jam** antara suplemen kalsium dan tablet tambah darah (Fe). DoseMate akan memberi peringatan otomatis bila jadwal Anda terlalu berdekatan.',
+          body: '### Interaksi Penyerapan\nKalsium dapat menghambat penyerapan zat besi di saluran cerna. Beri jeda minimal **2 jam** antara suplemen kalsium dan tablet tambah darah (Fe). DoseLynx akan memberi peringatan otomatis bila jadwal Anda terlalu berdekatan.',
         },
         {
           locale: 'en',
           title: 'Spacing Calcium & Iron Supplements by at Least 2 Hours',
           summary: 'Why separating daily calcium and iron doses prevents absorption conflict and improves therapy outcomes.',
-          body: '### Absorption Interaction\nCalcium competes with iron absorption in the gut. Separate calcium tablets and iron supplements by at least **2 hours**. DoseMate automatically flags spacing conflicts in your schedule.',
+          body: '### Absorption Interaction\nCalcium competes with iron absorption in the gut. Separate calcium tablets and iron supplements by at least **2 hours**. DoseLynx automatically flags spacing conflicts in your schedule.',
         },
       ],
     },
@@ -330,14 +330,14 @@ async function main() {
         {
           locale: 'id',
           title: 'Video Panduan: Langkah Tepat Mengukur Tekanan Darah di Rumah',
-          summary: 'Demonstrasi duduk tenang 5 menit, posisi manset sejajar jantung, dan pencatatan di DoseMate.',
-          body: '1. Duduk tenang 5 menit, punggung bersandar.\n2. Manset sejajar jantung pada lengan atas.\n3. Ukur 2 kali jeda 1 menit dan simpan langsung ke DoseMate.',
+          summary: 'Demonstrasi duduk tenang 5 menit, posisi manset sejajar jantung, dan pencatatan di DoseLynx.',
+          body: '1. Duduk tenang 5 menit, punggung bersandar.\n2. Manset sejajar jantung pada lengan atas.\n3. Ukur 2 kali jeda 1 menit dan simpan langsung ke DoseLynx.',
         },
         {
           locale: 'en',
           title: 'Video Guide: Step-by-Step Home Blood Pressure Measurement',
-          summary: 'Visual walkthrough of 5-minute rest posture, heart-level cuff placement, and DoseMate logging.',
-          body: '1. Sit quietly for 5 minutes with back supported.\n2. Place upper-arm cuff at heart level.\n3. Record two readings 1 minute apart directly in DoseMate.',
+          summary: 'Visual walkthrough of 5-minute rest posture, heart-level cuff placement, and DoseLynx logging.',
+          body: '1. Sit quietly for 5 minutes with back supported.\n2. Place upper-arm cuff at heart level.\n3. Record two readings 1 minute apart directly in DoseLynx.',
         },
       ],
     },
@@ -490,7 +490,7 @@ async function main() {
   // 5. Cohort of 4 Patients in Indonesia Pharmacy Tenant + 1 Patient in Singapore Tenant (Cross-Tenant Isolation)
   const cohortId = [
     {
-      email: 'pasien@dosemate.health',
+      email: 'pasien@doselynx.com',
       phone: '+6281234567890',
       name: 'Aisyah Rahmadani',
       studyCode: 'P-001',
@@ -528,7 +528,7 @@ async function main() {
       msg: 'Selamat pagi Apoteker, tekanan darah pagi ini 122/78 mmHg dan semua obat sudah saya minum tepat waktu.',
     },
     {
-      email: 'siti@dosemate.health',
+      email: 'siti@doselynx.com',
       phone: '+6281211112222',
       name: 'Siti Rahmawati',
       studyCode: 'P-002',
@@ -553,7 +553,7 @@ async function main() {
       msg: 'Halo, saya ingin bertanya mengenai efek samping Amlodipine, apakah normal jika saya merasa sedikit pusing?',
     },
     {
-      email: 'dewi@dosemate.health',
+      email: 'dewi@doselynx.com',
       phone: '+6281233334444',
       name: 'Dewi Lestari',
       studyCode: 'P-003',
@@ -578,7 +578,7 @@ async function main() {
       msg: 'Kemarin malam sempat terlambat minum obat 1 jam, hari ini sudah kembali sesuai jadwal.',
     },
     {
-      email: 'nur@dosemate.health',
+      email: 'nur@doselynx.com',
       phone: '+6281255556666',
       name: 'Nur Aisyah',
       studyCode: 'P-004',
@@ -600,7 +600,7 @@ async function main() {
       ],
       adherenceTarget: 0.75,
       bpSeries: [[136, 86, 78], [134, 85, 76], [132, 84, 77], [135, 85, 79], [135, 85, 76]],
-      msg: 'Terima kasih pengingat DoseMate, sangat membantu saya menjaga jadwal obat harian.',
+      msg: 'Terima kasih pengingat DoseLynx, sangat membantu saya menjaga jadwal obat harian.',
     },
   ];
 
@@ -768,7 +768,7 @@ async function main() {
               title: 'Evaluasi Pemantauan Terapi Obat (PTO)',
               type: 'FOLLOW_UP',
               scheduledAt: DateTime.now().setZone(TZ_ID).plus({ days: 7 }).set({ hour: 10, minute: 0 }).toJSDate(),
-              location: 'Telefarmasi DoseMate',
+              location: 'Telefarmasi DoseLynx',
               status: 'UPCOMING',
             },
           ],
@@ -798,7 +798,7 @@ async function main() {
             assessment: 'Terapi antihipertensi dan suplementasi harian efektif serta ditoleransi dengan baik.',
             plan: 'Lanjutkan Aspirin 80 mg pagi & Kalsium 500 mg 2x1 dengan jeda minimal 2 jam dari zat besi.',
             drpCategory: 'NONE',
-            recommendation: 'Pertahankan alarm DoseMate dan ukur tekanan darah 2x seminggu.',
+            recommendation: 'Pertahankan alarm DoseLynx dan ukur tekanan darah 2x seminggu.',
             adherenceRate: 90,
             latestBp: '122/78 mmHg',
             nextFollowUpDate: DateTime.now().setZone(TZ_ID).plus({ days: 7 }).toJSDate(),
@@ -868,13 +868,13 @@ async function main() {
     },
   });
 
-  console.log('DoseMate v2 seed complete!');
+  console.log('DoseLynx v2 seed complete!');
   console.log('  Tenant 1 (ID): Apotek & Farmasi Klinis Mitra [Invite: DOSE-MKS-01]');
   console.log('  Tenant 2 (SG): GreenCross Clinical Pharmacy SG [Invite: DOSE-SG-01]');
-  console.log('  Patient (ID):    pasien@dosemate.health / pasien1234');
-  console.log('  Pharmacist (ID): apoteker@dosemate.health / apoteker1234');
+  console.log('  Patient (ID):    pasien@doselynx.com / pasien1234');
+  console.log('  Pharmacist (ID): apoteker@doselynx.com / apoteker1234');
   console.log('  Pharmacist (SG): daniel@greencross.sg / apoteker1234');
-  console.log('  Super Admin:     admin@dosemate.health / admin1234');
+  console.log('  Super Admin:     admin@doselynx.com / admin1234');
 }
 
 main()

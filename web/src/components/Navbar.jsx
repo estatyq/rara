@@ -122,7 +122,7 @@ export default function Navbar() {
               </div>
               <div>
                 <span className="font-bold text-xl text-teal-950 tracking-tight flex items-center gap-1.5">
-                  Apoteku
+                  DoseLynx
                   {isStaff && (
                     <span className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full ${
                       isAdmin ? 'bg-indigo-100 text-indigo-800' : 'bg-teal-100 text-teal-800'

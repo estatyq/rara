@@ -218,7 +218,7 @@ async function startWorker() {
       await prisma.auditLog.create({
         data: {
           tenantId,
-          actorName: 'DoseMate SLA Worker',
+          actorName: 'DoseLynx SLA Worker',
           actorRole: 'SYSTEM',
           action: 'CRITICAL_BP_SLA_ESCALATED',
           entityType: 'BloodPressureLog',
@@ -250,7 +250,7 @@ async function startWorker() {
     { connection: conn },
   );
 
-  console.log('[dosemate-worker] BullMQ workers active (Valkey 8): escalations + scheduler');
+  console.log('[doselynx-worker] BullMQ workers active (Valkey 8): escalations + scheduler');
 
   const shutdown = async () => {
     await Promise.all([escalationWorker.close(), schedulerWorker.close(), schedulerQueue.close()]);
@@ -262,6 +262,6 @@ async function startWorker() {
 }
 
 startWorker().catch((err) => {
-  console.error('[dosemate-worker] Fatal error:', err);
+  console.error('[doselynx-worker] Fatal error:', err);
   process.exit(1);
 });

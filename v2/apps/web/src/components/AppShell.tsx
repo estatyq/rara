@@ -123,7 +123,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </button>
               <div className="hidden lg:flex items-center gap-2 text-xs font-bold text-teal-800 bg-teal-50 px-3 py-1.5 rounded-full border border-teal-100">
                 <ShieldCheck className="w-4 h-4 text-teal-600" />
-                <span>{user.tenants?.[0]?.name || 'DoseMate Pharmacy Cloud'}</span>
+                <span>{user.tenants?.[0]?.name || 'DoseLynx Pharmacy Cloud'}</span>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -146,7 +146,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
-  // Patient Shell matching DoseMate Mobile Mockup
+  // Patient Shell matching DoseLynx Mobile Mockup
   const patientLinks = [
     { to: '/', label: t('nav:home'), icon: Home },
     { to: '/health', label: t('nav:health'), icon: Activity },

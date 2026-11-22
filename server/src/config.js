@@ -14,7 +14,7 @@ export const config = {
   vapid: {
     publicKey: process.env.VAPID_PUBLIC_KEY || '',
     privateKey: process.env.VAPID_PRIVATE_KEY || '',
-    subject: process.env.VAPID_SUBJECT || 'mailto:admin@example.com',
+    subject: process.env.VAPID_SUBJECT || 'mailto:ops@doselynx.com',
     file: process.env.VAPID_FILE || new URL('../.vapid.json', import.meta.url),
   },
   missedAfterHours: Number(process.env.MISSED_AFTER_HOURS || 3),

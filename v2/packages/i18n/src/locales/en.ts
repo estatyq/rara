@@ -2,7 +2,7 @@ import type { TranslationResources } from './id.js';
 
 export const enResources: TranslationResources = {
   common: {
-    appName: 'DoseMate',
+    appName: 'DoseLynx',
     brandSubtitle: 'Your medication companion',
     tagline: 'Take your medicine. Track your health. Stay supported.',
     save: 'Save',
@@ -41,7 +41,7 @@ export const enResources: TranslationResources = {
     logout: 'Logout',
   },
   auth: {
-    loginTitle: 'Sign In to DoseMate',
+    loginTitle: 'Sign In to DoseLynx',
     loginSubtitle: 'Your verified medication companion & digital pharmacy platform',
     loginLabel: 'Email or WhatsApp Number',
     loginPlaceholder: '+6281234567890 or email@domain.com',
@@ -61,8 +61,8 @@ export const enResources: TranslationResources = {
   },
   alarm: {
     header: 'Time to take your medicine!',
-    privacyHeader: 'DoseMate Scheduled Reminder',
-    privacyBody: 'You have a scheduled health reminder waiting. Open DoseMate to view details.',
+    privacyHeader: 'DoseLynx Scheduled Reminder',
+    privacyBody: 'You have a scheduled health reminder waiting. Open DoseLynx to view details.',
     question: 'Have you taken your medication?',
     taken: 'Taken',
     skipped: 'Not Taken / Skip',

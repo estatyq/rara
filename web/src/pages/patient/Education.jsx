@@ -48,7 +48,7 @@ export default function PatientEducation() {
         <p className="text-sm text-slate-500 mt-1">{t.patient.educationSubtitle}</p>
       </div>
 
-      {/* Article / Video Segmented Tabs matching DoseMate Screen 5 */}
+      {/* Article / Video Segmented Tabs matching DoseLynx Screen 5 */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-teal-100 pb-4">
         <div className="inline-flex bg-white p-1 rounded-2xl border border-teal-100 shadow-xs self-start">
           <button

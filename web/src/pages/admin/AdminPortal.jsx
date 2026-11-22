@@ -75,7 +75,7 @@ export default function AdminPortal() {
     whatsapp_auto_bp_alert: 'true',
   });
   const [savingConfig, setSavingConfig] = useState(false);
-  const [testWaForm, setTestWaForm] = useState({ phone: '+6281234567890', message: 'Pesan uji coba integrasi WhatsApp Apoteku.' });
+  const [testWaForm, setTestWaForm] = useState({ phone: '+6281234567890', message: 'Pesan uji coba integrasi WhatsApp DoseLynx.' });
   const [sendingTestWa, setSendingTestWa] = useState(false);
 
   const loadAll = useCallback(async () => {
@@ -946,7 +946,7 @@ export default function AdminPortal() {
                     type="email"
                     value={newUserForm.email}
                     onChange={(e) => setNewUserForm({ ...newUserForm, email: e.target.value })}
-                    placeholder="nama@rara.local"
+                    placeholder="nama@doselynx.com"
                     className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
                   />
                 </div>

@@ -1,0 +1,73 @@
+name: doselynx-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-doselynx}
+      POSTGRES_USER: ${POSTGRES_USER:-doselynx}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.prod}
+    volumes:
+      - doselynx_pg_data:/var/lib/postgresql/data
+    networks:
+      - doselynx_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      args:
+        VITE_ENABLE_DEMO: ${VITE_ENABLE_DEMO:-true}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - doselynx_app_data:/app/data
+    networks:
+      - doselynx_net
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-doselynx}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.prod}@postgres:5432/${POSTGRES_DB:-doselynx}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env.prod}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://doselynx.com,https://www.doselynx.com}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:ops@doselynx.com}
+      VAPID_FILE: /app/data/vapid.json
+      MISSED_AFTER_HOURS: ${MISSED_AFTER_HOURS:-3}
+      DEFAULT_TIMEZONE: ${DEFAULT_TIMEZONE:-Asia/Jakarta}
+      AUTO_SEED: ${AUTO_SEED:-if_empty}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      start_period: 30s
+      retries: 5
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?Set CLOUDFLARE_TUNNEL_TOKEN in .env.prod}
+    networks:
+      - doselynx_net
+
+networks:
+  doselynx_net:
+    driver: bridge
+
+volumes:
+  doselynx_pg_data:
+  doselynx_app_data:

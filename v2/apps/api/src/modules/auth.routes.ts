@@ -442,7 +442,7 @@ export async function authRoutes(app: FastifyInstance) {
         category: 'OTP',
         templateName: 'otp_verify_v1',
         recipient: normalizedTarget,
-        payloadPreview: 'DoseMate verification code dispatched (redacted)',
+        payloadPreview: 'DoseLynx verification code dispatched (redacted)',
         status: 'DELIVERED',
         provider: 'SIMULATOR',
       },

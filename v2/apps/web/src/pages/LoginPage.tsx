@@ -52,11 +52,11 @@ export default function LoginPage() {
       </div>
 
       <div className="max-w-4xl w-full bg-white rounded-[2rem] shadow-xl shadow-teal-900/5 border border-teal-100 overflow-hidden grid grid-cols-1 md:grid-cols-2">
-        {/* Left Splash Panel (DoseMate Mockup Screen 1) */}
+        {/* Left Splash Panel (DoseLynx Mockup Screen 1) */}
         <div className="bg-gradient-to-b from-[#EDF9F8] via-white to-[#E6F4F9] p-8 sm:p-10 flex flex-col items-center justify-center text-center border-b md:border-b-0 md:border-r border-teal-100">
           <DoseMateLogo centered size="lg" showSubtitle />
           <div className="my-6 w-52 h-52 sm:w-60 sm:h-60 rounded-3xl overflow-hidden bg-white shadow-sm border border-teal-100">
-            <img src="/images/login-general-care.svg" alt="DoseMate Medication Companion" className="w-full h-full object-cover" />
+            <img src="/images/login-general-care.svg" alt="DoseLynx Medication Companion" className="w-full h-full object-cover" />
           </div>
           <p className="text-sm sm:text-base font-extrabold text-slate-800 max-w-xs">{t('common:tagline')}</p>
         </div>
@@ -107,7 +107,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void doLogin('pasien@dosemate.health', 'pasien1234')}
+                onClick={() => void doLogin('pasien@doselynx.com', 'pasien1234')}
                 className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-bold text-teal-800 bg-teal-50 hover:bg-teal-100 rounded-xl border border-teal-100 transition"
               >
                 <span className="flex items-center gap-2"><HeartPulse className="w-4 h-4 text-teal-600" /> Aisyah Rahmadani (Patient — ID)</span>
@@ -116,7 +116,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void doLogin('apoteker@dosemate.health', 'apoteker1234')}
+                onClick={() => void doLogin('apoteker@doselynx.com', 'apoteker1234')}
                 className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-bold text-sky-900 bg-sky-50 hover:bg-sky-100 rounded-xl border border-sky-100 transition"
               >
                 <span className="flex items-center gap-2"><UserCheck className="w-4 h-4 text-sky-600" /> Rabiatul Adawiah, Apt. (Pharmacy ID)</span>

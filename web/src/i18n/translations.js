@@ -1,6 +1,6 @@
 export const translations = {
   id: {
-    appName: 'DoseMate',
+    appName: 'DoseLynx',
     brandSubtitle: 'Your medication companion',
     tagline: 'Minum obat teratur. Pantau kesehatan. Selalu didampingi.',
     taglineShort: 'Pendamping Kepatuhan Obat & Pemantauan Kesehatan',
@@ -48,7 +48,7 @@ export const translations = {
       logout: 'Keluar',
     },
     auth: {
-      loginTitle: 'Masuk ke DoseMate',
+      loginTitle: 'Masuk ke DoseLynx',
       loginSubtitle: 'Minum obat teratur. Pantau kesehatan. Selalu didampingi.',
       loginInput: 'Email atau Nomor WhatsApp',
       loginInputPlaceholder: 'contoh: 081234567890 atau email',
@@ -85,7 +85,7 @@ export const translations = {
       confirmSkipped: 'Belum Diminum',
       snoozeLater: 'Nanti Saja (Tunda 10 Menit)',
       snoozedTitle: 'Pengingat Tunda (Snooze)',
-      confirmedNote: 'Dikonfirmasi dari alarm pengingat DoseMate',
+      confirmedNote: 'Dikonfirmasi dari alarm pengingat DoseLynx',
       testAlarm: 'Coba Alarm',
     },
     patient: {
@@ -259,7 +259,7 @@ export const translations = {
   },
 
   en: {
-    appName: 'DoseMate',
+    appName: 'DoseLynx',
     brandSubtitle: 'Your medication companion',
     tagline: 'Take your medicine. Track your health. Stay supported.',
     taglineShort: 'Medication Adherence & Clinical Pharmacy Platform',
@@ -307,7 +307,7 @@ export const translations = {
       logout: 'Logout',
     },
     auth: {
-      loginTitle: 'Sign In to DoseMate',
+      loginTitle: 'Sign In to DoseLynx',
       loginSubtitle: 'Take your medicine. Track your health. Stay supported.',
       loginInput: 'Email or WhatsApp Number',
       loginInputPlaceholder: 'e.g. 081234567890 or email',
@@ -344,7 +344,7 @@ export const translations = {
       confirmSkipped: 'Not Taken / Skip',
       snoozeLater: 'Remind Me Later (10 min)',
       snoozedTitle: 'Snoozed Reminder',
-      confirmedNote: 'Confirmed from DoseMate reminder alarm',
+      confirmedNote: 'Confirmed from DoseLynx reminder alarm',
       testAlarm: 'Test Alarm',
     },
     patient: {

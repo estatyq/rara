@@ -60,7 +60,7 @@ export default function AppShell({ children }) {
     return location.pathname.startsWith(pathname);
   };
 
-  // ---- STAFF & ADMIN: Dark-Teal Sidebar Web Dashboard (DoseMate Mockup) ----
+  // ---- STAFF & ADMIN: Dark-Teal Sidebar Web Dashboard (DoseLynx Mockup) ----
   if (isStaff) {
     const staffNav = [
       { to: '/staff', label: t.nav.dashboard, icon: LayoutDashboard },
@@ -166,7 +166,7 @@ export default function AppShell({ children }) {
               </div>
               <div className="hidden lg:block min-w-0">
                 <p className="text-xs font-bold uppercase tracking-wider text-teal-700">
-                  {isAdmin ? 'DoseMate Admin' : (lang === 'id' ? 'Dashboard Web Farmasis' : 'Pharmacist Web Dashboard')}
+                  {isAdmin ? 'DoseLynx Admin' : (lang === 'id' ? 'Dashboard Web Farmasis' : 'Pharmacist Web Dashboard')}
                 </p>
               </div>
             </div>
@@ -211,7 +211,7 @@ export default function AppShell({ children }) {
     { to: '/profile', label: t.nav.profile, icon: User },
   ];
 
-  // Exact 4-tab bottom nav matching the DoseMate mobile mockup
+  // Exact 4-tab bottom nav matching the DoseLynx mobile mockup
   const mobileBottomLinks = [
     { to: '/', label: t.nav.today, icon: Home },
     { to: '/medications', label: lang === 'id' ? 'Riwayat' : 'Meds', icon: Pill },
@@ -271,7 +271,7 @@ export default function AppShell({ children }) {
 
       <main className="flex-1 pb-20 lg:pb-8">{children}</main>
 
-      {/* Mobile 4-tab bottom navigation matching DoseMate mockup */}
+      {/* Mobile 4-tab bottom navigation matching DoseLynx mockup */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-teal-100 z-30 px-2 py-1.5 flex justify-around shadow-[0_-4px_20px_rgba(15,118,110,0.06)] print:hidden">
         {mobileBottomLinks.map((link) => {
           const Icon = link.icon;

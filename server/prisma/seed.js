@@ -10,24 +10,31 @@ const TZ = 'Asia/Jakarta';
 
 async function upsertUser({ email, password, ...data }) {
   const passwordHash = await bcrypt.hash(password, 10);
-  return prisma.user.upsert({
-    where: { email },
-    update: { passwordHash, ...data },
-    create: { email, passwordHash, ...data },
+  const orConditions = [{ email }];
+  if (data.phone) orConditions.push({ phone: data.phone });
+  const existing = await prisma.user.findFirst({ where: { OR: orConditions } });
+  if (existing) {
+    return prisma.user.update({
+      where: { id: existing.id },
+      data: { email, passwordHash, ...data },
+    });
+  }
+  return prisma.user.create({
+    data: { email, passwordHash, ...data },
   });
 }
 
 async function main() {
-  const admin = await upsertUser({ email: 'admin@rara.local', password: 'admin123', name: 'Admin Sistem Farmasi', phone: '+628110000100', role: 'ADMIN' });
+  const admin = await upsertUser({ email: 'admin@doselynx.com', password: 'admin123', name: 'Admin Sistem Farmasi', phone: '+628110000100', role: 'ADMIN' });
   const pharmacist = await upsertUser({
-    email: 'apoteker@rara.local',
+    email: 'apoteker@doselynx.com',
     password: 'apoteker123',
     phone: '+6281299887766',
     name: 'Rabiatul Adawiah, S.Farm., Apt.',
     role: 'PHARMACIST',
   });
   const secondPharmacist = await upsertUser({
-    email: 'apoteker2@rara.local',
+    email: 'apoteker2@doselynx.com',
     password: 'apoteker123',
     phone: '+6281355667788',
     name: 'apt. Hendra Wijaya, S.Farm.',
@@ -92,7 +99,7 @@ async function main() {
 
   // Demo patient with two weeks of history
   const patientUser = await upsertUser({
-    email: 'pasien@rara.local',
+    email: 'pasien@doselynx.com',
     password: 'pasien123',
     phone: '+6281234567890',
     name: 'Aisyah Rahmadani',
@@ -437,7 +444,7 @@ async function main() {
           type: 'CHECKUP',
           scheduledAt: DateTime.now().setZone(TZ).plus({ days: 3 }).set({ hour: 9, minute: 30 }).toJSDate(),
           location: 'Poli Obgyn RSIA Mitra',
-          notes: 'Bawa catatan tekanan darah 2 minggu terakhir dari aplikasi DoseMate.',
+          notes: 'Bawa catatan tekanan darah 2 minggu terakhir dari aplikasi DoseLynx.',
           status: 'UPCOMING',
         },
         {
@@ -446,7 +453,7 @@ async function main() {
           title: 'Tindak Lanjut Pemantauan Terapi Obat (PTO)',
           type: 'FOLLOW_UP',
           scheduledAt: DateTime.now().setZone(TZ).plus({ days: 7 }).set({ hour: 10, minute: 0 }).toJSDate(),
-          location: 'Telefarmasi DoseMate',
+          location: 'Telefarmasi DoseLynx',
           notes: 'Evaluasi kepatuhan aspirin dosis rendah dan suplemen kalsium.',
           status: 'UPCOMING',
         },
@@ -467,7 +474,7 @@ async function main() {
   // Seed additional realistic cohort patients so Pharmacist Dashboard KPIs, At-Risk, Trends & Activity are rich
   const extraCohort = [
     {
-      email: 'siti@rara.local',
+      email: 'siti@doselynx.com',
       phone: '+6281211112222',
       name: 'Siti Rahmawati',
       studyCode: 'P-002',
@@ -480,7 +487,7 @@ async function main() {
       msg: 'Halo apoteker, saya ingin bertanya mengenai efek samping Amlodipine, apakah normal jika kaki sedikit bengkak?',
     },
     {
-      email: 'dewi@rara.local',
+      email: 'dewi@doselynx.com',
       phone: '+6281233334444',
       name: 'Dewi Lestari',
       studyCode: 'P-003',
@@ -493,7 +500,7 @@ async function main() {
       msg: 'Selamat siang, kemarin saya lupa minum dosis sore karena ketiduran. Hari ini sudah saya lanjutkan normal.',
     },
     {
-      email: 'nur@rara.local',
+      email: 'nur@doselynx.com',
       phone: '+6281255556666',
       name: 'Nur Aisyah',
       studyCode: 'P-004',
@@ -543,7 +550,7 @@ async function main() {
           name: c.medName,
           dosage: c.dosage,
           form: 'Tablet',
-          instructions: 'Minum rutin sesuai jadwal alarm DoseMate.',
+          instructions: 'Minum rutin sesuai jadwal alarm DoseLynx.',
           times: c.times,
           startDate: start.toJSDate(),
           createdAt: start.toJSDate(),
@@ -607,7 +614,7 @@ async function main() {
           phone: '+6281234567890',
           direction: 'OUTBOUND',
           category: 'DOSE_REMINDER',
-          message: '[Pengingat DoseMate] Halo Aisyah Rahmadani, saatnya minum obat Anda: *Aspirin dosis rendah* (80 mg). Silakan konfirmasi di aplikasi setelah diminum.',
+          message: '[Pengingat DoseLynx] Halo Aisyah Rahmadani, saatnya minum obat Anda: *Aspirin dosis rendah* (80 mg). Silakan konfirmasi di aplikasi setelah diminum.',
           status: 'DELIVERED',
           provider: 'SIMULATOR',
           externalId: 'wa-seed-101',
@@ -618,7 +625,7 @@ async function main() {
           phone: '+6281234567890',
           direction: 'OUTBOUND',
           category: 'FOLLOW_UP',
-          message: '[Tindak Lanjut DoseMate] Halo Aisyah Rahmadani, Apoteker Rabiatul Adawiah, S.Farm., Apt. telah mencatat evaluasi terapi obat Anda. Rencana Terapi: Lanjutkan Aspirin 80 mg & Kalsium 500 mg sesuai jadwal.',
+          message: '[Tindak Lanjut DoseLynx] Halo Aisyah Rahmadani, Apoteker Rabiatul Adawiah, S.Farm., Apt. telah mencatat evaluasi terapi obat Anda. Rencana Terapi: Lanjutkan Aspirin 80 mg & Kalsium 500 mg sesuai jadwal.',
           status: 'DELIVERED',
           provider: 'SIMULATOR',
           externalId: 'wa-seed-102',
@@ -646,9 +653,9 @@ async function main() {
   }
 
   console.log('Seed complete.');
-  console.log('  Admin:      admin@rara.local / admin123');
-  console.log('  Pharmacist: apoteker@rara.local / apoteker123');
-  console.log('  Patient:    pasien@rara.local (or 081234567890) / pasien123');
+  console.log('  Admin:      admin@doselynx.com / admin123');
+  console.log('  Pharmacist: apoteker@doselynx.com / apoteker123');
+  console.log('  Patient:    pasien@doselynx.com (or 081234567890) / pasien123');
 }
 
 main()

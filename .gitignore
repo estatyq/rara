@@ -3,6 +3,8 @@ dist/
 dev-dist/
 .env
 **/.env
+.env.prod
+*.env.prod
 *.env.local
 .turbo/
 server/.vapid.json

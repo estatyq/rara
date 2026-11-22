@@ -44,7 +44,7 @@ export default function ChatPage() {
         </div>
         <div>
           <h1 className="font-extrabold text-slate-900 text-base">{t('nav:chat')}</h1>
-          <p className="text-xs text-emerald-600 font-medium">{pharmacist?.name || 'DoseMate Clinical Pharmacy'}</p>
+          <p className="text-xs text-emerald-600 font-medium">{pharmacist?.name || 'DoseLynx Clinical Pharmacy'}</p>
         </div>
       </div>
 

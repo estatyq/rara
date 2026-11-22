@@ -72,7 +72,7 @@ export default function PatientHomePage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-5">
-      {/* Greeting Row matching DoseMate Screen 2 */}
+      {/* Greeting Row matching DoseLynx Screen 2 */}
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -107,7 +107,7 @@ export default function PatientHomePage() {
         </div>
       )}
 
-      {/* Today's Adherence Mint Highlight Card (DoseMate Screen 2) */}
+      {/* Today's Adherence Mint Highlight Card (DoseLynx Screen 2) */}
       <div className="bg-gradient-to-br from-[#DFF6EC] via-[#E9F9F2] to-[#E6F4F9] rounded-3xl p-6 border border-emerald-200/70 shadow-sm flex items-center justify-between gap-4">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-wider text-teal-800">{t('patient:todayAdherence')}</p>

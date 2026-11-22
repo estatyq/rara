@@ -41,7 +41,7 @@ const api = express.Router();
 
 api.get('/health', async (req, res) => {
   await prisma.$queryRaw`SELECT 1`;
-  res.json({ ok: true, time: new Date().toISOString() });
+  res.json({ ok: true, service: 'doselynx-api', time: new Date().toISOString() });
 });
 
 // Public
@@ -77,9 +77,19 @@ app.use('/api', api);
 // Serve compiled PWA frontend when present (e.g. inside Docker production builds)
 const webDistDir = path.resolve(__dirname, '../../web/dist');
 if (fs.existsSync(webDistDir)) {
-  app.use(express.static(webDistDir));
+  const noCachePattern = /(?:sw\.js|registerSW\.js|manifest\.webmanifest|index\.html)$/;
+  app.use(
+    express.static(webDistDir, {
+      setHeaders: (res, filePath) => {
+        if (noCachePattern.test(filePath)) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+      },
+    }),
+  );
   app.get('/{*splat}', (req, res, next) => {
     if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next();
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(webDistDir, 'index.html'));
   });
 }
@@ -89,8 +99,8 @@ app.use(errorHandler);
 const server = http.createServer(app);
 initRealtime(server);
 
-server.listen(config.port, () => {
-  console.log(`[rara] API listening on http://localhost:${config.port}`);
+server.listen(config.port, '0.0.0.0', () => {
+  console.log(`[doselynx] API listening on http://0.0.0.0:${config.port}`);
   startScheduler();
 });
 

@@ -26,14 +26,14 @@ export function buildDosePushNotification(input: DoseNotificationInput) {
   if (input.privacyMode) {
     return input.locale === 'en'
       ? {
-          title: 'DoseMate Reminder',
-          body: 'You have a scheduled health reminder. Open DoseMate to confirm.',
+          title: 'DoseLynx Reminder',
+          body: 'You have a scheduled health reminder. Open DoseLynx to confirm.',
           actionTaken: 'Confirm',
           actionOpen: 'Open',
         }
       : {
-          title: 'Pengingat DoseMate',
-          body: 'Anda memiliki jadwal kesehatan. Buka DoseMate untuk konfirmasi.',
+          title: 'Pengingat DoseLynx',
+          body: 'Anda memiliki jadwal kesehatan. Buka DoseLynx untuk konfirmasi.',
           actionTaken: 'Konfirmasi',
           actionOpen: 'Buka',
         };
@@ -69,8 +69,8 @@ export function buildWhatsAppTemplatePayload(
 export function buildBpAlertText(input: BpAlertNotificationInput): string {
   if (input.privacyMode) {
     return input.locale === 'en'
-      ? `[DoseMate] Hello ${input.patientName}, an important health reading requires your attention. Please open DoseMate or contact your pharmacist.`
-      : `[DoseMate] Halo ${input.patientName}, terdapat hasil pemantauan kesehatan yang memerlukan perhatian. Silakan buka DoseMate atau hubungi apoteker Anda.`;
+      ? `[DoseLynx] Hello ${input.patientName}, an important health reading requires your attention. Please open DoseLynx or contact your pharmacist.`
+      : `[DoseLynx] Halo ${input.patientName}, terdapat hasil pemantauan kesehatan yang memerlukan perhatian. Silakan buka DoseLynx atau hubungi apoteker Anda.`;
   }
 
   if (input.locale === 'en') {
@@ -78,12 +78,12 @@ export function buildBpAlertText(input: BpAlertNotificationInput): string {
       input.category === 'CRITICAL'
         ? 'Please seek immediate medical evaluation or contact your clinical pharmacist.'
         : 'Please rest quietly, re-measure in 15 minutes, and consult your pharmacist.';
-    return `[DoseMate Alert] Hello ${input.patientName}, your blood pressure reading (${input.systolic}/${input.diastolic} mmHg) is classified as ${input.category}. ${urgency}`;
+    return `[DoseLynx Alert] Hello ${input.patientName}, your blood pressure reading (${input.systolic}/${input.diastolic} mmHg) is classified as ${input.category}. ${urgency}`;
   }
 
   const urgency =
     input.category === 'CRITICAL'
       ? 'Segera cari pertolongan medis di fasilitas kesehatan terdekat atau hubungi apoteker Anda.'
       : 'Silakan istirahat tenang, ukur ulang 15 menit lagi, dan konsultasikan dengan apoteker Anda.';
-  return `[Peringatan DoseMate] Halo ${input.patientName}, tekanan darah Anda (${input.systolic}/${input.diastolic} mmHg) masuk kategori ${input.category === 'CRITICAL' ? 'KRITIS' : 'TINGGI'}. ${urgency}`;
+  return `[Peringatan DoseLynx] Halo ${input.patientName}, tekanan darah Anda (${input.systolic}/${input.diastolic} mmHg) masuk kategori ${input.category === 'CRITICAL' ? 'KRITIS' : 'TINGGI'}. ${urgency}`;
 }

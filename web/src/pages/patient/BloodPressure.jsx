@@ -428,7 +428,7 @@ export default function PatientBloodPressure() {
         })}
       </div>
 
-      {/* ================= TAB 1: BLOOD PRESSURE (DoseMate Screen 4) ================= */}
+      {/* ================= TAB 1: BLOOD PRESSURE (DoseLynx Screen 4) ================= */}
       {activeTab === 'bp' && (
         <div className="space-y-6">
           {/* Safety Triage Banner */}
@@ -452,7 +452,7 @@ export default function PatientBloodPressure() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Friendly DoseMate Screen 4 Input Card */}
+            {/* Friendly DoseLynx Screen 4 Input Card */}
             <form
               onSubmit={handleSaveBp}
               className="lg:col-span-5 bg-white rounded-3xl p-6 border border-teal-100 shadow-sm space-y-5"

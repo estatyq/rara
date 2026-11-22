@@ -1,6 +1,6 @@
 export const idResources = {
   common: {
-    appName: 'DoseMate',
+    appName: 'DoseLynx',
     brandSubtitle: 'Your medication companion',
     tagline: 'Minum obat teratur. Pantau kesehatan. Selalu didampingi.',
     save: 'Simpan',
@@ -39,7 +39,7 @@ export const idResources = {
     logout: 'Keluar',
   },
   auth: {
-    loginTitle: 'Masuk ke DoseMate',
+    loginTitle: 'Masuk ke DoseLynx',
     loginSubtitle: 'Pendamping kepatuhan obat & layanan farmasi digital terverifikasi',
     loginLabel: 'Email atau Nomor WhatsApp',
     loginPlaceholder: '081234567890 atau email@domain.com',
@@ -59,7 +59,7 @@ export const idResources = {
   },
   alarm: {
     header: 'Saatnya minum obat!',
-    privacyHeader: 'Pengingat Jadwal DoseMate',
+    privacyHeader: 'Pengingat Jadwal DoseLynx',
     privacyBody: 'Anda memiliki jadwal kesehatan yang perlu dikonfirmasi. Buka aplikasi untuk detail.',
     question: 'Apakah Anda sudah minum obat?',
     taken: 'Sudah Diminum',

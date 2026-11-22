@@ -67,7 +67,7 @@ export async function buildApp() {
     openapi: {
       openapi: '3.1.0',
       info: {
-        title: 'DoseMate Cloud v2 API',
+        title: 'DoseLynx Cloud v2 API',
         description: 'Global Multi-Tenant Digital Pharmacy & Medication Adherence Platform API',
         version: '2.0.0',
       },
@@ -97,7 +97,7 @@ export async function buildApp() {
         r.disconnect();
       }
     }
-    return { ok: true, service: 'dosemate-api-v2', valkey, time: new Date().toISOString() };
+    return { ok: true, service: 'doselynx-api-v2', valkey, time: new Date().toISOString() };
   });
 
   // Register modular domain routes

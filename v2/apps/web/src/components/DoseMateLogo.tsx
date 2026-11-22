@@ -1,7 +1,7 @@
 import { useId } from 'react';
 
 /**
- * DoseMate Rhythm Ring brand mark:
+ * DoseLynx Rhythm Ring brand mark:
  * 270° adherence progress arc + on-time dose node + centered clinical cross.
  * Always keeps shrink-0 proportions so it never squishes inside flex headers.
  */
@@ -62,7 +62,7 @@ export default function DoseMateLogo({
   const wordmark = (
     <>
       <span className={inverted ? 'text-white' : 'text-slate-900'}>Dose</span>
-      <span className={inverted ? 'text-teal-200' : 'text-teal-600'}>Mate</span>
+      <span className={inverted ? 'text-teal-200' : 'text-teal-600'}>Lynx</span>
     </>
   );
 

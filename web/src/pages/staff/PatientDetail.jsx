@@ -319,7 +319,7 @@ export default function StaffPatientDetail() {
           Laporan Pemantauan Terapi Obat (PTO) & Farmasi Klinis
         </h1>
         <p className="text-xs text-slate-600">
-          Platform Layanan Farmasi Digital Apoteku • Apoteker Penanggung Jawab: {patient.pharmacist?.name || user.name}
+          Platform Layanan Farmasi Digital DoseLynx • Apoteker Penanggung Jawab: {patient.pharmacist?.name || user.name}
         </p>
       </div>
 

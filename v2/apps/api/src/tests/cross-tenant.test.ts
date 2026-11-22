@@ -2,7 +2,7 @@ import { prisma } from '@dosemate/db';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../app.js';
 
-describe('DoseMate v2 Security, Multi-Tenancy RLS & Clinical Integrity Suite', () => {
+describe('DoseLynx v2 Security, Multi-Tenancy RLS & Clinical Integrity Suite', () => {
   let app: Awaited<ReturnType<typeof buildApp>>;
   let idPharmacistToken = '';
   let sgPharmacistToken = '';
@@ -18,7 +18,7 @@ describe('DoseMate v2 Security, Multi-Tenancy RLS & Clinical Integrity Suite', (
     const loginIdPharm = await app.inject({
       method: 'POST',
       url: '/api/auth/login',
-      payload: { login: 'apoteker@dosemate.health', password: 'apoteker1234', transport: 'bearer' },
+      payload: { login: 'apoteker@doselynx.com', password: 'apoteker1234', transport: 'bearer' },
     });
     expect(loginIdPharm.statusCode).toBe(200);
     const idPharmBody = loginIdPharm.json();
@@ -38,7 +38,7 @@ describe('DoseMate v2 Security, Multi-Tenancy RLS & Clinical Integrity Suite', (
     const loginIdPatient = await app.inject({
       method: 'POST',
       url: '/api/auth/login',
-      payload: { login: 'pasien@dosemate.health', password: 'pasien1234', transport: 'bearer' },
+      payload: { login: 'pasien@doselynx.com', password: 'pasien1234', transport: 'bearer' },
     });
     expect(loginIdPatient.statusCode).toBe(200);
     idPatientToken = loginIdPatient.json().accessToken;
@@ -157,7 +157,7 @@ describe('DoseMate v2 Security, Multi-Tenancy RLS & Clinical Integrity Suite', (
     const login = await app.inject({
       method: 'POST',
       url: '/api/auth/login',
-      payload: { login: 'pasien@dosemate.health', password: 'pasien1234', transport: 'bearer' },
+      payload: { login: 'pasien@doselynx.com', password: 'pasien1234', transport: 'bearer' },
     });
     const token = login.json().accessToken;
 

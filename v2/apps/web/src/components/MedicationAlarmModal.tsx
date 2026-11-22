@@ -34,12 +34,12 @@ export default function MedicationAlarmModal() {
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true">
       <div className="w-full max-w-sm bg-gradient-to-b from-[#F4FAF9] via-white to-[#E6F7F5] rounded-[2rem] shadow-2xl border border-teal-100 p-6">
-        {/* Top Push Notification Card matching DoseMate Screen 3 */}
+        {/* Top Push Notification Card matching DoseLynx Screen 3 */}
         <div className="bg-white rounded-2xl p-3.5 shadow-sm border border-teal-100 flex items-start gap-3">
           <DoseMateMark className="w-8 h-8 mt-0.5" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-teal-800">DoseMate</span>
+              <span className="text-xs font-extrabold text-teal-800">DoseLynx</span>
               <span className="text-[10px] text-slate-400">{activeAlarm.timeLabel}</span>
             </div>
             <p className="text-xs font-bold text-slate-900 mt-0.5">{t('alarm:header')}</p>
