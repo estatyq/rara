@@ -13,7 +13,7 @@ import { dateTimeInputInZone } from '../../utils/date';
 
 export default function PatientDashboard() {
   const { user } = useAuth();
-  const { t, lang, dateLocale } = useLanguage();
+  const { t, lang, dateLocale, localize } = useLanguage();
   const { socket, triggerAlarm } = useSocket();
 
   const [doses, setDoses] = useState([]);
@@ -128,16 +128,17 @@ export default function PatientDashboard() {
 
   const handlePreviewAlarm = () => {
     const target = nextDose;
+    const medName = localize(target?.medication?.name || 'Aspirin dosis rendah');
     triggerAlarm({
       type: 'dose',
       doseId: target?.id || null,
-      medication: target?.medication?.name || 'Aspirin dosis rendah',
+      medication: medName,
       dosage: target?.medication?.dosage || '80 mg',
-      instructions: target?.medication?.instructions || null,
+      instructions: localize(target?.medication?.instructions) || null,
       title: t.alarm.pushHeader,
       message: target
-        ? `${target.medication.name}${target.medication.dosage ? ` • ${target.medication.dosage}` : ''}`
-        : 'Aspirin dosis rendah • 80 mg',
+        ? `${medName}${target.medication.dosage ? ` • ${target.medication.dosage}` : ''}`
+        : `${medName} • 80 mg`,
     });
   };
 
@@ -237,7 +238,7 @@ export default function PatientDashboard() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="font-extrabold text-slate-900 text-base truncate">
-                    {nextDose.medication.name}
+                    {localize(nextDose.medication.name)}
                   </div>
                   <div className="text-xs text-slate-500 mt-0.5">
                     {nextDose.medication.dosage || '—'}
@@ -341,7 +342,7 @@ export default function PatientDashboard() {
                             <Clock className="w-3.5 h-3.5 text-teal-600" />
                             {formatTime(dose.scheduledAt)}
                           </span>
-                          <span className="font-bold text-sm text-slate-900">{dose.medication.name}</span>
+                          <span className="font-bold text-sm text-slate-900">{localize(dose.medication.name)}</span>
                           {dose.medication.dosage && (
                             <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
                               {dose.medication.dosage}
@@ -349,7 +350,7 @@ export default function PatientDashboard() {
                           )}
                         </div>
                         {dose.medication.instructions && (
-                          <p className="text-xs text-slate-500 mt-1.5">{dose.medication.instructions}</p>
+                          <p className="text-xs text-slate-500 mt-1.5">{localize(dose.medication.instructions)}</p>
                         )}
                       </div>
 
@@ -476,11 +477,11 @@ export default function PatientDashboard() {
                   {nextCheckup ? (
                     <>
                       <h3 className="text-sm font-extrabold text-slate-900 mt-0.5 leading-snug">
-                        {nextCheckup.title}
+                        {localize(nextCheckup.title)}
                       </h3>
                       <p className="text-xs text-teal-800 font-semibold mt-1">
                         {formatDateShort(nextCheckup.scheduledAt)}
-                        {nextCheckup.location ? ` • ${nextCheckup.location}` : ''}
+                        {nextCheckup.location ? ` • ${localize(nextCheckup.location)}` : ''}
                       </p>
                     </>
                   ) : (

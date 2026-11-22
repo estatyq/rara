@@ -5,7 +5,7 @@ import { api } from '../../api/client';
 import { useLanguage } from '../../i18n/LanguageContext';
 
 export default function StaffConversations() {
-  const { t, dateLocale } = useLanguage();
+  const { t, dateLocale, localize } = useLanguage();
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,7 +64,7 @@ export default function StaffConversations() {
                     )}
                   </div>
                   <p className="text-xs text-slate-500 truncate max-w-md mt-0.5">
-                    {c.lastMessage?.body || t.staff.noMessagesYet}
+                    {localize(c.lastMessage?.body) || t.staff.noMessagesYet}
                   </p>
                 </div>
               </div>

@@ -182,7 +182,7 @@ function ParamMiniChart({ logs, unit, timeZone, dateLocale }) {
 
 export default function PatientBloodPressure() {
   const { user } = useAuth();
-  const { lang, t, dateLocale } = useLanguage();
+  const { lang, t, dateLocale, localize } = useLanguage();
   const { socket } = useSocket();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -635,7 +635,7 @@ export default function PatientBloodPressure() {
                               {text[log.category.toLowerCase()] || log.category}
                             </span>
                           </div>
-                          {log.note && <p className="text-xs text-slate-500 mt-0.5">{log.note}</p>}
+                          {log.note && <p className="text-xs text-slate-500 mt-0.5">{localize(log.note)}</p>}
                         </div>
                         <div className="text-right shrink-0">
                           <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1">
@@ -822,7 +822,7 @@ export default function PatientBloodPressure() {
                         <span className="font-extrabold text-slate-900 text-sm">
                           {log.value} {log.unit}
                         </span>
-                        {log.note && <p className="text-xs text-slate-500 mt-0.5">{log.note}</p>}
+                        {log.note && <p className="text-xs text-slate-500 mt-0.5">{localize(log.note)}</p>}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span className="text-[11px] text-slate-400">{formatDate(log.measuredAt)}</span>
@@ -952,10 +952,10 @@ export default function PatientBloodPressure() {
                           </span>
                         </div>
                         <h4 className={`font-extrabold text-sm mt-1 ${isDone ? 'line-through text-slate-500' : 'text-slate-900'}`}>
-                          {item.title}
+                          {localize(item.title)}
                         </h4>
-                        {item.location && <p className="text-xs text-slate-600 mt-0.5">📍 {item.location}</p>}
-                        {item.notes && <p className="text-xs text-slate-500 mt-1">{item.notes}</p>}
+                        {item.location && <p className="text-xs text-slate-600 mt-0.5">📍 {localize(item.location)}</p>}
+                        {item.notes && <p className="text-xs text-slate-500 mt-1">{localize(item.notes)}</p>}
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">

@@ -207,7 +207,7 @@ router.post('/users', requireRole('ADMIN'), async (req, res) => {
         straNumber: d.straNumber || null,
         sipaNumber: d.sipaNumber || null,
         workplace: d.workplace || null,
-        specialization: d.specialization || 'Farmasi Klinis & Kehamilan',
+        specialization: d.specialization || 'Clinical Pharmacy',
         yearsExperience: d.yearsExperience ?? 3,
         verificationStatus: status,
         verifiedAt: status === 'VERIFIED' ? new Date() : null,

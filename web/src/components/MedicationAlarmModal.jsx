@@ -10,7 +10,7 @@ import { DoseMateMark } from './DoseMateLogo';
  * modeled directly on the DoseLynx "Pengingat & Konfirmasi Obat" screen.
  */
 export default function MedicationAlarmModal() {
-  const { t } = useLanguage();
+  const { t, localize } = useLanguage();
   const { activeAlert, clearAlert, snoozeAlert } = useSocket();
   const [busy, setBusy] = useState(false);
 
@@ -47,8 +47,8 @@ export default function MedicationAlarmModal() {
                 {activeAlert.time || t.alarm.nowLabel}
               </span>
             </div>
-            <p className="text-xs font-bold text-slate-900 mt-0.5">{activeAlert.title}</p>
-            <p className="text-xs text-slate-600 truncate">{activeAlert.message}</p>
+            <p className="text-xs font-bold text-slate-900 mt-0.5">{localize(activeAlert.title)}</p>
+            <p className="text-xs text-slate-600 truncate">{localize(activeAlert.message)}</p>
           </div>
         </div>
 
@@ -68,11 +68,11 @@ export default function MedicationAlarmModal() {
             {t.alarm.question}
           </h2>
           <p className="text-sm font-semibold text-teal-700 mt-2">
-            {activeAlert.message}
+            {localize(activeAlert.message)}
           </p>
           {activeAlert.instructions && (
             <p className="text-xs text-slate-500 mt-1.5 max-w-xs leading-relaxed">
-              {activeAlert.instructions}
+              {localize(activeAlert.instructions)}
             </p>
           )}
         </div>

@@ -7,7 +7,7 @@ import { api } from '../../api/client';
 import { useLanguage } from '../../i18n/LanguageContext';
 
 export default function AdminPortal() {
-  const { lang } = useLanguage();
+  const { lang, localize } = useLanguage();
   const isEn = lang === 'en';
   const dateLocale = isEn ? 'en-US' : 'id-ID';
   const [activeTab, setActiveTab] = useState('reports'); // reports | users | verification | services | system
@@ -508,7 +508,7 @@ export default function AdminPortal() {
                   {users.map((u) => (
                     <tr key={u.id} className="hover:bg-slate-50">
                       <td className="px-5 py-3.5">
-                        <div className="font-bold text-slate-900 text-sm">{u.name}</div>
+                        <div className="font-bold text-slate-900 text-sm">{localize(u.name)}</div>
                         <div className="text-slate-500">{u.email || '—'} • {u.phone || '—'}</div>
                       </td>
                       <td className="px-5 py-3.5">
@@ -526,7 +526,7 @@ export default function AdminPortal() {
                         {u.role === 'PATIENT' && (
                           <span>
                             {isEn ? 'Code:' : 'Kode:'} <strong>{u.patient?.studyCode || '—'}</strong> •{' '}
-                            {u.patient?.diagnosis || (isEn ? 'Patient' : 'Pasien')}
+                            {localize(u.patient?.diagnosis) || (isEn ? 'Patient' : 'Pasien')}
                           </span>
                         )}
                         {u.role === 'PHARMACIST' && (
@@ -625,14 +625,14 @@ export default function AdminPortal() {
                         <span className="font-mono">{p.sipaNumber || (isEn ? 'Not provided' : 'Belum dilengkapi')}</span>
                       </div>
                       <div>
-                        <strong>{isEn ? 'Workplace:' : 'Tempat Praktik:'}</strong> {p.workplace || '—'}
+                        <strong>{isEn ? 'Workplace:' : 'Tempat Praktik:'}</strong> {localize(p.workplace) || '—'}
                       </div>
                       <div>
-                        <strong>{isEn ? 'Specialization:' : 'Spesialisasi:'}</strong> {p.specialization || '—'}
+                        <strong>{isEn ? 'Specialization:' : 'Spesialisasi:'}</strong> {localize(p.specialization) || '—'}
                       </div>
                       {p.verificationNote && (
                         <div className="text-teal-800 pt-1 border-t border-slate-200/60">
-                          <strong>{isEn ? 'Verification Note:' : 'Catatan Verifikasi:'}</strong> {p.verificationNote}
+                          <strong>{isEn ? 'Verification Note:' : 'Catatan Verifikasi:'}</strong> {localize(p.verificationNote)}
                         </div>
                       )}
                     </div>
@@ -927,7 +927,7 @@ export default function AdminPortal() {
                       <span className="font-bold text-emerald-700">{w.phone} • {w.category} ({w.provider})</span>
                       <span>{new Date(w.createdAt).toLocaleString(dateLocale)} • {w.status}</span>
                     </div>
-                    <p className="text-slate-700 mt-1">{w.message}</p>
+                    <p className="text-slate-700 mt-1">{localize(w.message)}</p>
                   </div>
                 ))}
               </div>
@@ -957,7 +957,7 @@ export default function AdminPortal() {
                         {new Date(a.createdAt).toLocaleString(dateLocale)}
                       </td>
                       <td className="px-4 py-2 font-semibold text-slate-800">
-                        {a.actorName} ({a.actorRole})
+                        {localize(a.actorName)} ({a.actorRole})
                       </td>
                       <td className="px-4 py-2 font-mono font-bold text-indigo-700">{a.action}</td>
                       <td className="px-4 py-2 text-slate-600">{a.entityType}</td>

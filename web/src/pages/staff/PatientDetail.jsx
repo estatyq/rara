@@ -23,7 +23,7 @@ const DRP_LABELS = {
 export default function StaffPatientDetail() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
-  const { t, lang } = useLanguage();
+  const { t, lang, localize } = useLanguage();
   const isEn = lang === 'en';
   const dateLocale = isEn ? 'en-US' : 'id-ID';
   const { user } = useAuth();
@@ -46,7 +46,9 @@ export default function StaffPatientDetail() {
   const [loading, setLoading] = useState(true);
 
   // Notes state
+  const [notesRaw, setNotesRaw] = useState('');
   const [notes, setNotes] = useState('');
+  const [notesDirty, setNotesDirty] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
 
   // Chat & WhatsApp reply state
@@ -98,7 +100,8 @@ export default function StaffPatientDetail() {
         api.getStaffList().catch(() => ({ users: [] })),
       ]);
       setPatient(pRes.patient);
-      setNotes(pRes.patient?.notes || '');
+      setNotesRaw(pRes.patient?.notes || '');
+      setNotesDirty(false);
       setMedications(mRes.medications || []);
       setAdherence(aRes);
       setDoses((dRes.doses || []).slice().reverse());
@@ -120,6 +123,12 @@ export default function StaffPatientDetail() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!notesDirty) {
+      setNotes(localize(notesRaw));
+    }
+  }, [localize, notesRaw, notesDirty]);
 
   useEffect(() => {
     if (!socket) return;
@@ -152,6 +161,8 @@ export default function StaffPatientDetail() {
     setSavingNotes(true);
     try {
       await api.updatePatient(id, { notes });
+      setNotesRaw(notes);
+      setNotesDirty(false);
       alert(isEn ? 'Clinical notes saved!' : 'Catatan klinis berhasil disimpan!');
     } catch (err) {
       alert(err.message || (isEn ? 'Failed to save notes' : 'Gagal menyimpan catatan'));
@@ -327,8 +338,8 @@ export default function StaffPatientDetail() {
         </h1>
         <p className="text-xs text-slate-600">
           {isEn
-            ? `DoseLynx Digital Pharmacy Platform • Responsible Pharmacist: ${patient.pharmacist?.name || user.name}`
-            : `Platform Layanan Farmasi Digital DoseLynx • Apoteker Penanggung Jawab: ${patient.pharmacist?.name || user.name}`}
+            ? `DoseLynx Digital Pharmacy Platform • Responsible Pharmacist: ${patient.pharmacist?.name || localize(user.name)}`
+            : `Platform Layanan Farmasi Digital DoseLynx • Apoteker Penanggung Jawab: ${patient.pharmacist?.name || localize(user.name)}`}
         </p>
       </div>
 
@@ -350,12 +361,12 @@ export default function StaffPatientDetail() {
             <p className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-2">
               <span>{patient.user.phone || patient.user.email}</span>
               <span>•</span>
-              <span>Diagnosis: <strong>{patient.diagnosis || '—'}</strong></span>
+              <span>Diagnosis: <strong>{localize(patient.diagnosis) || '—'}</strong></span>
               {patient.allergies && (
                 <>
                   <span>•</span>
                   <span className="text-rose-700 font-semibold">
-                    {isEn ? 'Allergies:' : 'Alergi:'} {patient.allergies}
+                    {isEn ? 'Allergies:' : 'Alergi:'} {localize(patient.allergies)}
                   </span>
                 </>
               )}
@@ -480,7 +491,7 @@ export default function StaffPatientDetail() {
                 <strong className="block uppercase text-[10px] text-amber-700 mb-1">
                   {isEn ? 'Clinical Risk Factors:' : 'Faktor Risiko Klinis:'}
                 </strong>
-                {patient.riskFactors}
+                {localize(patient.riskFactors)}
               </div>
             )}
           </div>
@@ -513,10 +524,10 @@ export default function StaffPatientDetail() {
               >
                 <div className="flex items-start justify-between">
                   <div>
-                    <h4 className="font-bold text-slate-900 text-base">{med.name}</h4>
+                    <h4 className="font-bold text-slate-900 text-base">{localize(med.name)}</h4>
                     <span className="text-xs font-semibold text-teal-700">{med.dosage} • {med.form}</span>
                     {med.instructions && (
-                      <p className="text-xs text-slate-600 mt-2">{med.instructions}</p>
+                      <p className="text-xs text-slate-600 mt-2">{localize(med.instructions)}</p>
                     )}
                     <div className="mt-3 flex flex-wrap gap-1">
                       {med.times.map((timeStr) => (
@@ -601,7 +612,7 @@ export default function StaffPatientDetail() {
                           }).format(new Date(d.scheduledAt))}
                         </td>
                         <td className="px-5 py-3">
-                          <span className="font-bold text-slate-900">{d.medication?.name}</span>{' '}
+                          <span className="font-bold text-slate-900">{localize(d.medication?.name)}</span>{' '}
                           <span className="text-teal-700 font-semibold">{d.medication?.dosage}</span>
                         </td>
                         <td className="px-5 py-3">
@@ -619,7 +630,7 @@ export default function StaffPatientDetail() {
                             ? `${new Date(d.takenAt).toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })} (${delayMin >= 0 ? `+${delayMin}` : delayMin} ${isEn ? 'min' : 'mnt'})`
                             : '—'}
                         </td>
-                        <td className="px-5 py-3 italic text-slate-500">{d.note || '—'}</td>
+                        <td className="px-5 py-3 italic text-slate-500">{localize(d.note) || '—'}</td>
                       </tr>
                     );
                   })}
@@ -690,7 +701,7 @@ export default function StaffPatientDetail() {
                           }).format(new Date(log.measuredAt))}
                           {' · '}{log.source === 'CLINIC' ? (isEn ? 'Clinic' : 'Klinik') : (isEn ? 'Self' : 'Mandiri')}
                         </p>
-                        {log.note && <p className="text-xs text-slate-500 mt-1">{log.note}</p>}
+                        {log.note && <p className="text-xs text-slate-500 mt-1">{localize(log.note)}</p>}
                       </div>
                       <span className={`text-[10px] font-bold border rounded-full px-2 py-1 ${
                         log.category === 'NORMAL'
@@ -1000,13 +1011,13 @@ export default function StaffPatientDetail() {
                     {f.subjective && (
                       <div className="p-3 bg-slate-50 rounded-xl">
                         <strong className="text-slate-800 block mb-0.5">S — Subjective:</strong>
-                        <p className="text-slate-600">{f.subjective}</p>
+                        <p className="text-slate-600">{localize(f.subjective)}</p>
                       </div>
                     )}
                     {f.objective && (
                       <div className="p-3 bg-slate-50 rounded-xl">
                         <strong className="text-slate-800 block mb-0.5">O — Objective:</strong>
-                        <p className="text-slate-600">{f.objective}</p>
+                        <p className="text-slate-600">{localize(f.objective)}</p>
                       </div>
                     )}
                   </div>
@@ -1016,7 +1027,7 @@ export default function StaffPatientDetail() {
                       <strong className="text-slate-800 block mb-0.5">
                         {isEn ? 'A — Assessment (Pharmacotherapy Analysis):' : 'A — Assessment (Analisis Farmakoterapi):'}
                       </strong>
-                      <p className="text-slate-700">{f.assessment}</p>
+                      <p className="text-slate-700">{localize(f.assessment)}</p>
                     </div>
                   )}
 
@@ -1024,12 +1035,12 @@ export default function StaffPatientDetail() {
                     <strong className="text-teal-950 block mb-0.5">
                       {isEn ? 'P — Plan (Care Plan):' : 'P — Plan (Rencana Tindak Lanjut):'}
                     </strong>
-                    <p className="text-teal-900 whitespace-pre-line">{f.plan}</p>
+                    <p className="text-teal-900 whitespace-pre-line">{localize(f.plan)}</p>
                   </div>
 
                   {f.recommendation && (
                     <p className="text-xs text-slate-700">
-                      <strong>{isEn ? 'Recommendation:' : 'Rekomendasi:'}</strong> {f.recommendation}
+                      <strong>{isEn ? 'Recommendation:' : 'Rekomendasi:'}</strong> {localize(f.recommendation)}
                     </p>
                   )}
 
@@ -1070,7 +1081,7 @@ export default function StaffPatientDetail() {
                           isMe ? 'bg-teal-600 text-white rounded-br-none' : 'bg-white text-slate-900 border border-slate-200 rounded-bl-none'
                         }`}
                       >
-                        <p>{m.body}</p>
+                        <p>{localize(m.body)}</p>
                         <span className={`block text-[9px] mt-1 text-right ${isMe ? 'text-teal-200' : 'text-slate-400'}`}>
                           {new Date(m.createdAt).toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })}
                         </span>
@@ -1160,7 +1171,7 @@ export default function StaffPatientDetail() {
                         <span className="font-bold text-emerald-700">{w.category}</span>
                         <span>{new Date(w.createdAt).toLocaleString(dateLocale)} • {w.status}</span>
                       </div>
-                      <p className="text-slate-700">{w.message}</p>
+                      <p className="text-slate-700">{localize(w.message)}</p>
                     </div>
                   ))}
                 </div>
@@ -1190,7 +1201,10 @@ export default function StaffPatientDetail() {
             <textarea
               rows={8}
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={(e) => {
+                setNotes(e.target.value);
+                setNotesDirty(true);
+              }}
               placeholder={
                 isEn
                   ? 'Record counseling history, schedule adjustments, side effect notes, or clinical observations...'

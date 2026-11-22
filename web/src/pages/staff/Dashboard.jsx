@@ -73,7 +73,7 @@ function DualTrendChart({ trend, t, dateLocale }) {
 }
 
 export default function StaffDashboard() {
-  const { t, lang, dateLocale } = useLanguage();
+  const { t, lang, dateLocale, localize } = useLanguage();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const view = searchParams.get('view') || 'overview';
@@ -184,6 +184,14 @@ export default function StaffDashboard() {
     if (act.kind === 'BP') return { icon: HeartPulse, label: t.staff.actBp, cls: 'bg-rose-50 text-rose-600' };
     if (act.kind === 'HEALTH_PARAM') return { icon: Activity, label: t.staff.actParam, cls: 'bg-sky-50 text-sky-700' };
     return { icon: MessageSquare, label: t.staff.actMsg, cls: 'bg-teal-50 text-teal-700' };
+  };
+
+  const formatActivityDetail = (act) => {
+    if (act.kind === 'HEALTH_PARAM' && act.detail?.includes(':')) {
+      const [paramKey, ...rest] = act.detail.split(':');
+      return `${t.health.paramTypes[paramKey] || paramKey}:${rest.join(':')}`;
+    }
+    return localize(act.detail);
   };
 
   const fmtTime = (iso) =>
@@ -377,7 +385,7 @@ export default function StaffDashboard() {
                             {act.patientName}
                           </div>
                           <div className="text-[11px] text-slate-500 truncate">
-                            {meta.label} • {act.detail}
+                            {meta.label} • {formatActivityDetail(act)}
                           </div>
                           <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
                             <Clock className="w-2.5 h-2.5" />
@@ -453,7 +461,7 @@ export default function StaffDashboard() {
                         <div className="font-extrabold text-slate-900">{p.user?.name}</div>
                         <div className="text-[11px] text-slate-500">{p.user?.phone || p.user?.email}</div>
                       </td>
-                      <td className="px-5 py-3.5 max-w-xs truncate text-slate-600">{p.diagnosis || '—'}</td>
+                      <td className="px-5 py-3.5 max-w-xs truncate text-slate-600">{localize(p.diagnosis) || '—'}</td>
                       <td className="px-5 py-3.5 text-center font-bold text-slate-800">{p.activeMedications}</td>
                       <td className="px-5 py-3.5 text-center">
                         <span className={`inline-block px-2.5 py-0.5 rounded-full font-extrabold text-[11px] ${
@@ -534,10 +542,10 @@ export default function StaffDashboard() {
                     <p className="text-xs font-semibold text-teal-800 mt-1">
                       {req.patient?.user?.name} ({req.patient?.user?.phone || req.patient?.user?.email})
                     </p>
-                    {req.complaint && <p className="text-xs text-slate-600 mt-1.5 italic">"{req.complaint}"</p>}
+                    {req.complaint && <p className="text-xs text-slate-600 mt-1.5 italic">"{localize(req.complaint)}"</p>}
                     {req.pharmacistReply && (
                       <div className="mt-2 p-2.5 rounded-xl bg-white border border-teal-100 text-xs text-slate-700">
-                        <strong>{lang === 'id' ? 'Balasan:' : 'Reply:'}</strong> {req.pharmacistReply}
+                        <strong>{lang === 'id' ? 'Balasan:' : 'Reply:'}</strong> {localize(req.pharmacistReply)}
                       </div>
                     )}
                   </div>

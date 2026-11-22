@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { translations } from './translations';
+import { localizeSeedText } from './seedDataTranslations';
 import { api } from '../api/client';
 
 const LanguageContext = createContext(null);
@@ -29,9 +30,10 @@ export function LanguageProvider({ children }) {
 
   const t = translations[lang] || translations.id;
   const dateLocale = lang === 'en' ? 'en-US' : 'id-ID';
+  const localize = useCallback((text) => localizeSeedText(text, lang), [lang]);
 
   return (
-    <LanguageContext.Provider value={{ lang, setLang, t, toggleLanguage, dateLocale }}>
+    <LanguageContext.Provider value={{ lang, setLang, t, toggleLanguage, dateLocale, localize }}>
       {children}
     </LanguageContext.Provider>
   );

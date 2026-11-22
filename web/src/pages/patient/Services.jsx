@@ -17,7 +17,7 @@ const ICONS = {
 };
 
 export default function PatientServices() {
-  const { lang } = useLanguage();
+  const { lang, localize } = useLanguage();
   const { socket } = useSocket();
   const [services, setServices] = useState([]);
   const [pharmacists, setPharmacists] = useState([]);
@@ -224,7 +224,7 @@ export default function PatientServices() {
                         )}
                       </div>
                       <p className="text-xs text-teal-700 font-semibold mt-0.5">
-                        {prof?.specialization || (lang === 'id' ? 'Apoteker Klinis' : 'Clinical Pharmacist')}
+                        {localize(prof?.specialization) || (lang === 'id' ? 'Apoteker Klinis' : 'Clinical Pharmacist')}
                       </p>
                     </div>
                   </div>
@@ -235,7 +235,7 @@ export default function PatientServices() {
                     {prof.workplace && (
                       <div className="flex items-center gap-1.5">
                         <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span>{prof.workplace}</span>
+                        <span>{localize(prof.workplace)}</span>
                       </div>
                     )}
                     {prof.straNumber && (
@@ -320,13 +320,13 @@ export default function PatientServices() {
                 </div>
                 {r.complaint && (
                   <p className="text-xs text-slate-700">
-                    <strong>{lang === 'id' ? 'Keluhan / Catatan:' : 'Notes:'}</strong> {r.complaint}
+                    <strong>{lang === 'id' ? 'Keluhan / Catatan:' : 'Notes:'}</strong> {localize(r.complaint)}
                   </p>
                 )}
                 {r.pharmacistReply && (
                   <div className="p-3 bg-teal-50/70 border border-teal-200 rounded-lg text-xs text-teal-900">
                     <strong>{lang === 'id' ? 'Tanggapan Apoteker:' : 'Pharmacist Response:'}</strong>{' '}
-                    {r.pharmacistReply}
+                    {localize(r.pharmacistReply)}
                   </div>
                 )}
               </div>

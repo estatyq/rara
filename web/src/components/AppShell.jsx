@@ -43,7 +43,7 @@ function LanguageSwitch({ compact = false }) {
 
 export default function AppShell({ children }) {
   const { user, isStaff, isAdmin, logout } = useAuth();
-  const { lang, t } = useLanguage();
+  const { lang, t, localize } = useLanguage();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -185,7 +185,7 @@ export default function AppShell({ children }) {
                   {initials}
                 </div>
                 <div className="hidden sm:block text-left leading-tight">
-                  <div className="text-xs font-bold text-slate-900 max-w-[190px] truncate">{user.name}</div>
+                  <div className="text-xs font-bold text-slate-900 max-w-[190px] truncate">{localize(user.name)}</div>
                   <div className="text-[11px] text-slate-500">
                     {user.role === 'ADMIN' ? 'Administrator' : (lang === 'id' ? 'Farmasis' : 'Pharmacist')}
                   </div>
@@ -253,7 +253,7 @@ export default function AppShell({ children }) {
           <div className="flex items-center gap-2 shrink-0">
             <LanguageSwitch compact />
             <div className="hidden sm:flex lg:hidden xl:flex flex-col text-right leading-tight pl-1">
-              <span className="text-xs font-bold text-slate-900 max-w-[140px] truncate">{user.name}</span>
+              <span className="text-xs font-bold text-slate-900 max-w-[140px] truncate">{localize(user.name)}</span>
               <span className="text-[10px] text-slate-500">{user.phone || user.email}</span>
             </div>
             <button

@@ -7,7 +7,7 @@ import { useSocket } from '../../context/SocketContext';
 
 export default function PatientChat() {
   const { user } = useAuth();
-  const { t, lang, dateLocale } = useLanguage();
+  const { t, lang, dateLocale, localize } = useLanguage();
   const { socket } = useSocket();
 
   const [messages, setMessages] = useState([]);
@@ -167,7 +167,7 @@ export default function PatientChat() {
                       : 'bg-[#F1F6F8] text-slate-800 border border-slate-200/70 rounded-bl-md'
                   }`}
                 >
-                  {msg.body}
+                  {localize(msg.body)}
                 </div>
                 <span className="text-[10px] text-slate-400 mt-1 px-1 flex items-center gap-1">
                   <Clock className="w-2.5 h-2.5" />

@@ -8,7 +8,7 @@ import { useLanguage } from '../../i18n/LanguageContext';
 
 export default function PatientProfile() {
   const { user, refreshUser } = useAuth();
-  const { t, lang } = useLanguage();
+  const { t, lang, localize } = useLanguage();
   const [profile, setProfile] = useState(null);
   const [waLogs, setWaLogs] = useState([]);
   const [waMeUrl, setWaMeUrl] = useState(null);
@@ -339,7 +339,7 @@ export default function PatientProfile() {
               {lang === 'id' ? 'Diagnosis / Kondisi' : 'Diagnosis / Condition'}
             </span>
             <span className="font-semibold text-slate-800">
-              {profile?.diagnosis || '—'}
+              {localize(profile?.diagnosis) || '—'}
             </span>
           </div>
 
@@ -349,7 +349,7 @@ export default function PatientProfile() {
               {lang === 'id' ? 'Riwayat Alergi Obat' : 'Drug Allergies'}
             </span>
             <span className="font-semibold text-slate-800">
-              {profile?.allergies || (lang === 'en' ? 'None' : 'Tidak ada')}
+              {localize(profile?.allergies) || (lang === 'en' ? 'None' : 'Tidak ada')}
             </span>
           </div>
 
@@ -427,7 +427,7 @@ export default function PatientProfile() {
                     <span className="font-bold text-emerald-700">{log.category}</span>
                     <span>{new Date(log.createdAt).toLocaleString(lang === 'id' ? 'id-ID' : 'en-US')} • {log.status}</span>
                   </div>
-                  <p className="text-slate-700">{log.message}</p>
+                  <p className="text-slate-700">{localize(log.message)}</p>
                 </div>
               ))}
             </div>

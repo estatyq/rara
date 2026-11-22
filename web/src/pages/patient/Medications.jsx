@@ -12,7 +12,7 @@ import { dateTimeInputInZone } from '../../utils/date';
 
 export default function PatientMedications() {
   const { user } = useAuth();
-  const { t, lang } = useLanguage();
+  const { t, lang, localize } = useLanguage();
   const { triggerAlarm } = useSocket();
 
   const [activeTab, setActiveTab] = useState('schedule'); // schedule | history | followups
@@ -119,8 +119,8 @@ export default function PatientMedications() {
   const handleStopMedication = async (med) => {
     const confirmMsg =
       lang === 'id'
-        ? `Nonaktifkan jadwal pengingat untuk ${med.name}? Riwayat konsumsi tetap tersimpan.`
-        : `Stop reminders for ${med.name}? Dose history will be preserved.`;
+        ? `Nonaktifkan jadwal pengingat untuk ${localize(med.name)}? Riwayat konsumsi tetap tersimpan.`
+        : `Stop reminders for ${localize(med.name)}? Dose history will be preserved.`;
     if (!window.confirm(confirmMsg)) return;
     try {
       await api.deleteMedication(med.id);
@@ -159,14 +159,14 @@ export default function PatientMedications() {
           <button
             onClick={() =>
               triggerAlarm({
-                medication: activeMeds[0]?.name || 'Aspirin dosis rendah',
+                medication: localize(activeMeds[0]?.name || 'Aspirin dosis rendah'),
                 dosage: activeMeds[0]?.dosage || '80 mg',
-                instructions: activeMeds[0]?.instructions || (lang === 'en' ? 'Take after meal' : 'Minum sesudah makan'),
+                instructions: localize(activeMeds[0]?.instructions) || (lang === 'en' ? 'Take after meal' : 'Minum sesudah makan'),
                 title: lang === 'id' ? 'Uji Alarm Obat 💊' : 'Medication Alarm Test 💊',
                 message:
                   lang === 'id'
-                    ? `Saatnya minum ${activeMeds[0]?.name || 'Obat Anda'}`
-                    : `Time to take ${activeMeds[0]?.name || 'Your Medication'}`,
+                    ? `Saatnya minum ${localize(activeMeds[0]?.name || 'Obat Anda')}`
+                    : `Time to take ${localize(activeMeds[0]?.name || 'Your Medication')}`,
               })
             }
             className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-xl text-xs font-bold transition"
@@ -242,7 +242,7 @@ export default function PatientMedications() {
                       </div>
                       <div>
                         <h3 className="font-bold text-slate-900 text-lg leading-tight">
-                          {med.name}
+                          {localize(med.name)}
                         </h3>
                         <div className="flex items-center gap-2 mt-0.5">
                           {med.dosage && (
@@ -280,7 +280,7 @@ export default function PatientMedications() {
                       <span className="font-semibold block text-slate-900">
                         {t.patient.instructions}:
                       </span>
-                      <p>{med.instructions}</p>
+                      <p>{localize(med.instructions)}</p>
                     </div>
                   )}
 
@@ -327,7 +327,7 @@ export default function PatientMedications() {
                 {inactiveMeds.map((med) => (
                   <div key={med.id} className="bg-slate-100 rounded-xl p-4 border border-slate-200">
                     <h4 className="font-semibold text-slate-700 text-sm">
-                      {med.name} {med.dosage}
+                      {localize(med.name)} {med.dosage}
                     </h4>
                     <p className="text-xs text-slate-500 mt-1">
                       {lang === 'id' ? 'Status: Tidak aktif' : 'Status: Inactive'}
@@ -416,7 +416,7 @@ export default function PatientMedications() {
                     <div key={d.id} className="px-5 py-3.5 flex items-center justify-between gap-4 hover:bg-slate-50/70">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-slate-900 text-sm">{d.medication?.name}</span>
+                          <span className="font-bold text-slate-900 text-sm">{localize(d.medication?.name)}</span>
                           {d.medication?.dosage && (
                             <span className="text-[11px] font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full">
                               {d.medication.dosage}
@@ -427,7 +427,7 @@ export default function PatientMedications() {
                           {schedStr}
                           {delayMin !== null && delayMin > 0 ? ` • +${delayMin} ${lang === 'en' ? 'min' : 'mnt'}` : ''}
                         </p>
-                        {d.note && <p className="text-xs italic text-slate-600 mt-1">"{d.note}"</p>}
+                        {d.note && <p className="text-xs italic text-slate-600 mt-1">"{localize(d.note)}"</p>}
                       </div>
 
                       <span
@@ -492,7 +492,7 @@ export default function PatientMedications() {
                     <strong className="text-slate-900 block mb-0.5">
                       {lang === 'id' ? 'Penilaian Apoteker (Assessment):' : 'Pharmacist Assessment:'}
                     </strong>
-                    {f.assessment}
+                    {localize(f.assessment)}
                   </div>
                 )}
 
@@ -500,12 +500,12 @@ export default function PatientMedications() {
                   <strong className="block">
                     {lang === 'id' ? 'Rencana Tindak Lanjut Terapi (Plan):' : 'Care Plan:'}
                   </strong>
-                  <p className="whitespace-pre-line">{f.plan}</p>
+                  <p className="whitespace-pre-line">{localize(f.plan)}</p>
                 </div>
 
                 {f.recommendation && (
                   <p className="text-xs text-slate-700">
-                    <strong>{lang === 'id' ? 'Saran untuk Pasien:' : 'Patient Recommendation:'}</strong> {f.recommendation}
+                    <strong>{lang === 'id' ? 'Saran untuk Pasien:' : 'Patient Recommendation:'}</strong> {localize(f.recommendation)}
                   </p>
                 )}
               </div>
