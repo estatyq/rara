@@ -47,18 +47,18 @@ export default function PatientSurveys() {
     // Verify all answered
     const unanswered = activeSurvey.questions.some((q) => !answers[q.id]);
     if (unanswered) {
-      alert('Mohon jawab seluruh pertanyaan sebelum mengirim.');
+      alert(lang === 'en' ? 'Please answer all questions before submitting.' : 'Mohon jawab seluruh pertanyaan sebelum mengirim.');
       return;
     }
 
     setSubmitting(true);
     try {
       await api.submitQuestionnaire(activeSurvey.id, answers);
-      alert('Terima kasih! Kuesioner berhasil dikirim.');
+      alert(lang === 'en' ? 'Thank you! Questionnaire submitted successfully.' : 'Terima kasih! Kuesioner berhasil dikirim.');
       setActiveSurvey(null);
       await loadSurveys();
     } catch (err) {
-      alert(err.message || 'Gagal mengirim kuesioner');
+      alert(err.message || (lang === 'en' ? 'Failed to submit questionnaire' : 'Gagal mengirim kuesioner'));
     } finally {
       setSubmitting(false);
     }
@@ -195,7 +195,7 @@ export default function PatientSurveys() {
 
                   <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
                     <span className="text-xs text-slate-400">
-                      {q.questions.length} Pertanyaan
+                      {q.questions.length} {lang === 'en' ? 'Questions' : 'Pertanyaan'}
                     </span>
                     <button
                       onClick={() => handleStartSurvey(q)}
@@ -215,22 +215,24 @@ export default function PatientSurveys() {
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
               <h3 className="text-sm font-bold text-slate-900 mb-3 flex items-center gap-2">
                 <Award className="w-4 h-4 text-teal-600" />
-                Riwayat Pengisian Kuesioner
+                {lang === 'en' ? 'Submission History' : 'Riwayat Pengisian Kuesioner'}
               </h3>
               <div className="divide-y divide-slate-100 text-xs">
                 {responses.map((resp) => (
                   <div key={resp.id} className="py-2.5 flex items-center justify-between">
                     <div>
                       <span className="font-semibold text-slate-800">
-                        {resp.questionnaire?.titleId || resp.questionnaire?.code}
+                        {(lang === 'en'
+                          ? (resp.questionnaire?.titleEn || resp.questionnaire?.titleId)
+                          : (resp.questionnaire?.titleId || resp.questionnaire?.titleEn)) || resp.questionnaire?.code}
                       </span>
                       <span className="text-slate-400 block text-[11px]">
-                        {new Date(resp.createdAt).toLocaleString()}
+                        {new Date(resp.createdAt).toLocaleString(lang === 'en' ? 'en-US' : 'id-ID')}
                       </span>
                     </div>
                     {resp.score !== null && (
                       <span className="font-bold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200">
-                        Skor: {resp.score}
+                        {lang === 'en' ? 'Score:' : 'Skor:'} {resp.score}
                       </span>
                     )}
                   </div>

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Plus, Edit, Trash2, CheckCircle2, XCircle, Tag, Eye } from 'lucide-react';
+import { BookOpen, Plus, Edit, Trash2 } from 'lucide-react';
 import { api } from '../../api/client';
 import { useLanguage } from '../../i18n/LanguageContext';
 
 export default function StaffEducationManager() {
   const { t, lang } = useLanguage();
+  const isEn = lang === 'en';
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingArticle, setEditingArticle] = useState(null);
@@ -66,7 +67,7 @@ export default function StaffEducationManager() {
       });
       setShowModal(true);
     } catch (err) {
-      alert(err.message || 'Gagal memuat artikel');
+      alert(err.message || (isEn ? 'Failed to load article' : 'Gagal memuat artikel'));
     }
   };
 
@@ -81,17 +82,17 @@ export default function StaffEducationManager() {
       setShowModal(false);
       await loadArticles();
     } catch (err) {
-      alert(err.message || 'Gagal menyimpan artikel');
+      alert(err.message || (isEn ? 'Failed to save article' : 'Gagal menyimpan artikel'));
     }
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Hapus artikel edukasi ini?')) return;
+    if (!window.confirm(isEn ? 'Delete this educational article?' : 'Hapus artikel edukasi ini?')) return;
     try {
       await api.deleteArticle(id);
       await loadArticles();
     } catch (err) {
-      alert(err.message || 'Gagal menghapus');
+      alert(err.message || (isEn ? 'Failed to delete article' : 'Gagal menghapus'));
     }
   };
 
@@ -103,7 +104,9 @@ export default function StaffEducationManager() {
             {t.staff.manageArticles}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Kelola materi edukasi obat dwibahasa (Bahasa Indonesia & English) untuk pasien.
+            {isEn
+              ? 'Manage bilingual (Indonesian & English) medication education materials for patients.'
+              : 'Kelola materi edukasi obat dwibahasa (Bahasa Indonesia & English) untuk pasien.'}
           </p>
         </div>
 
@@ -125,7 +128,9 @@ export default function StaffEducationManager() {
         ) : articles.length === 0 ? (
           <div className="p-12 text-center text-slate-400">
             <BookOpen className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-            <p className="text-sm font-medium">Belum ada artikel edukasi.</p>
+            <p className="text-sm font-medium">
+              {isEn ? 'No educational materials yet.' : 'Belum ada artikel edukasi.'}
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
@@ -138,31 +143,35 @@ export default function StaffEducationManager() {
                     </span>
                     {art.drugName && (
                       <span className="text-xs text-slate-500 font-medium">
-                        Obat: {art.drugName}
+                        {isEn ? 'Medication:' : 'Obat:'} {art.drugName}
                       </span>
                     )}
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       art.published ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
                     }`}>
-                      {art.published ? 'Tayang' : 'Draf'}
+                      {art.published ? (isEn ? 'Published' : 'Tayang') : (isEn ? 'Draft' : 'Draf')}
                     </span>
                   </div>
-                  <h3 className="font-bold text-slate-900 text-base">{art.titleId}</h3>
-                  <p className="text-xs text-slate-500 line-clamp-1">{art.summaryId}</p>
+                  <h3 className="font-bold text-slate-900 text-base">
+                    {isEn ? (art.titleEn || art.titleId) : art.titleId}
+                  </h3>
+                  <p className="text-xs text-slate-500 line-clamp-1">
+                    {isEn ? (art.summaryEn || art.summaryId) : art.summaryId}
+                  </p>
                 </div>
 
                 <div className="flex items-center space-x-2 shrink-0">
                   <button
                     onClick={() => handleOpenEdit(art)}
                     className="p-2 text-slate-500 hover:text-teal-700 hover:bg-teal-50 rounded-lg transition"
-                    title="Ubah"
+                    title={t.common.edit}
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(art.id)}
                     className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                    title="Hapus"
+                    title={t.common.delete}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -178,13 +187,17 @@ export default function StaffEducationManager() {
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-4 my-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
             <h2 className="text-xl font-bold text-slate-900">
-              {editingArticle ? 'Ubah Materi Edukasi' : 'Tulis Materi Edukasi Baru'}
+              {editingArticle
+                ? (isEn ? 'Edit Educational Material' : 'Ubah Materi Edukasi')
+                : (isEn ? 'Create Educational Material' : 'Tulis Materi Edukasi Baru')}
             </h2>
 
             <form onSubmit={handleSave} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 uppercase">Slug URL (misal: amlodipin) *</label>
+                  <label className="text-xs font-semibold text-slate-700 uppercase">
+                    {isEn ? 'URL Slug (e.g., amlodipine) *' : 'Slug URL (misal: amlodipin) *'}
+                  </label>
                   <input
                     type="text"
                     required
@@ -194,18 +207,22 @@ export default function StaffEducationManager() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 uppercase">Kategori *</label>
+                  <label className="text-xs font-semibold text-slate-700 uppercase">
+                    {isEn ? 'Category *' : 'Kategori *'}
+                  </label>
                   <input
                     type="text"
                     required
                     value={form.category}
                     onChange={(e) => setForm({ ...form, category: e.target.value })}
-                    placeholder="Antihipertensi"
+                    placeholder={isEn ? 'Medication Information' : 'Informasi Obat'}
                     className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 uppercase">Nama Obat (Opsional)</label>
+                  <label className="text-xs font-semibold text-slate-700 uppercase">
+                    {isEn ? 'Medication Name (Optional)' : 'Nama Obat (Opsional)'}
+                  </label>
                   <input
                     type="text"
                     value={form.drugName}
@@ -217,7 +234,9 @@ export default function StaffEducationManager() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 uppercase">Judul (Bahasa Indonesia) *</label>
+                <label className="text-xs font-semibold text-slate-700 uppercase">
+                  {isEn ? 'Title (Indonesian) *' : 'Judul (Bahasa Indonesia) *'}
+                </label>
                 <input
                   type="text"
                   required
@@ -228,7 +247,9 @@ export default function StaffEducationManager() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 uppercase">Judul (English) *</label>
+                <label className="text-xs font-semibold text-slate-700 uppercase">
+                  {isEn ? 'Title (English) *' : 'Judul (English) *'}
+                </label>
                 <input
                   type="text"
                   required
@@ -239,7 +260,9 @@ export default function StaffEducationManager() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 uppercase">Ringkasan (Bahasa Indonesia)</label>
+                <label className="text-xs font-semibold text-slate-700 uppercase">
+                  {isEn ? 'Summary (Indonesian)' : 'Ringkasan (Bahasa Indonesia)'}
+                </label>
                 <textarea
                   rows={2}
                   value={form.summaryId}
@@ -249,7 +272,9 @@ export default function StaffEducationManager() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 uppercase">Ringkasan (English)</label>
+                <label className="text-xs font-semibold text-slate-700 uppercase">
+                  {isEn ? 'Summary (English)' : 'Ringkasan (English)'}
+                </label>
                 <textarea
                   rows={2}
                   value={form.summaryEn}
@@ -259,19 +284,23 @@ export default function StaffEducationManager() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 uppercase">Isi Artikel (Bahasa Indonesia) *</label>
+                <label className="text-xs font-semibold text-slate-700 uppercase">
+                  {isEn ? 'Article Body (Indonesian) *' : 'Isi Artikel (Bahasa Indonesia) *'}
+                </label>
                 <textarea
                   rows={6}
                   required
                   value={form.bodyId}
                   onChange={(e) => setForm({ ...form, bodyId: e.target.value })}
-                  placeholder="Gunakan ### untuk judul sub-bagian, - untuk daftar butir."
+                  placeholder={isEn ? 'Use ### for section headers, - for bullet items.' : 'Gunakan ### untuk judul sub-bagian, - untuk daftar butir.'}
                   className="mt-1 w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-sans"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 uppercase">Isi Artikel (English) *</label>
+                <label className="text-xs font-semibold text-slate-700 uppercase">
+                  {isEn ? 'Article Body (English) *' : 'Isi Artikel (English) *'}
+                </label>
                 <textarea
                   rows={6}
                   required
@@ -291,7 +320,7 @@ export default function StaffEducationManager() {
                   className="rounded text-teal-600 focus:ring-teal-500"
                 />
                 <label htmlFor="published" className="text-xs font-semibold text-slate-700">
-                  Publikasikan segera agar dapat dibaca pasien
+                  {isEn ? 'Publish immediately so patients can read it' : 'Publikasikan segera agar dapat dibaca pasien'}
                 </label>
               </div>
 
@@ -301,13 +330,13 @@ export default function StaffEducationManager() {
                   onClick={() => setShowModal(false)}
                   className="px-4 py-2 text-xs font-semibold text-slate-600"
                 >
-                  Batal
+                  {t.common.cancel}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-xl shadow-sm transition"
                 >
-                  Simpan Artikel
+                  {isEn ? 'Save Article' : 'Simpan Artikel'}
                 </button>
               </div>
             </form>

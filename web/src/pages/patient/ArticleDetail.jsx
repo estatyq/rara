@@ -14,9 +14,9 @@ export default function ArticleDetail() {
   useEffect(() => {
     api.getArticle(slug)
       .then((res) => setArticle(res.article))
-      .catch((err) => setError(err.message || 'Gagal memuat artikel'))
+      .catch((err) => setError(err.message || (lang === 'en' ? 'Failed to load article' : 'Gagal memuat artikel')))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, lang]);
 
   if (loading) {
     return (
@@ -30,7 +30,9 @@ export default function ArticleDetail() {
   if (error || !article) {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
-        <p className="text-rose-600 font-semibold mb-4">{error || 'Artikel tidak ditemukan'}</p>
+        <p className="text-rose-600 font-semibold mb-4">
+          {error || (lang === 'en' ? 'Article not found' : 'Artikel tidak ditemukan')}
+        </p>
         <Link to="/education" className="text-teal-600 font-semibold hover:underline">
           ← {t.common.back}
         </Link>
@@ -60,7 +62,7 @@ export default function ArticleDetail() {
             </span>
             {article.drugName && (
               <span className="text-xs font-semibold text-slate-600">
-                Obat: {article.drugName}
+                {lang === 'en' ? 'Medication:' : 'Obat:'} {article.drugName}
               </span>
             )}
           </div>
@@ -72,11 +74,11 @@ export default function ArticleDetail() {
           <div className="flex items-center gap-4 text-xs text-slate-400 pt-2 border-t border-slate-100">
             <span className="flex items-center gap-1">
               <UserCheck className="w-4 h-4 text-teal-600" />
-              Ditinjau oleh Tim Farmasi
+              {lang === 'en' ? 'Reviewed by Clinical Pharmacy Team' : 'Ditinjau oleh Tim Farmasi'}
             </span>
             <span className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />
-              {new Date(article.updatedAt).toLocaleDateString()}
+              {new Date(article.updatedAt).toLocaleDateString(lang === 'en' ? 'en-US' : 'id-ID')}
             </span>
           </div>
         </div>
@@ -109,17 +111,19 @@ export default function ArticleDetail() {
         <div className="mt-8 p-5 bg-teal-50 rounded-2xl border border-teal-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h4 className="text-sm font-bold text-teal-900">
-              Ada pertanyaan seputar obat ini?
+              {lang === 'en' ? 'Have questions about this medication?' : 'Ada pertanyaan seputar obat ini?'}
             </h4>
             <p className="text-xs text-teal-700 mt-0.5">
-              Konsultasikan dosis, keluhan lambung, atau interaksi obat langsung dengan apoteker.
+              {lang === 'en'
+                ? 'Consult dosage, side effects, or drug interactions directly with your clinical pharmacist.'
+                : 'Konsultasikan dosis, keluhan lambung, atau interaksi obat langsung dengan apoteker.'}
             </p>
           </div>
           <Link
             to="/chat"
             className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-xl shadow-sm transition whitespace-nowrap self-start sm:self-center"
           >
-            Tanya Apoteker
+            {lang === 'en' ? 'Ask Pharmacist' : 'Tanya Apoteker'}
           </Link>
         </div>
       </article>

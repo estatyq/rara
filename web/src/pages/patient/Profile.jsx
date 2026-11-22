@@ -90,7 +90,7 @@ export default function PatientProfile() {
       await loadData();
       setEditing(false);
     } catch (err) {
-      alert(err.message || 'Gagal memperbarui profil');
+      alert(err.message || (lang === 'en' ? 'Failed to update profile' : 'Gagal memperbarui profil'));
     } finally {
       setSaving(false);
     }
@@ -138,7 +138,7 @@ export default function PatientProfile() {
         setPushSubscribed(true);
       }
     } catch (err) {
-      alert(err.message || 'Gagal mengubah pengaturan notifikasi');
+      alert(err.message || (lang === 'en' ? 'Failed to update notification settings' : 'Gagal mengubah pengaturan notifikasi'));
     } finally {
       setPushLoading(false);
     }
@@ -149,7 +149,7 @@ export default function PatientProfile() {
       await api.testPush();
       alert(lang === 'id' ? 'Notifikasi uji coba berhasil dikirim!' : 'Test notification sent!');
     } catch (err) {
-      alert(err.message || 'Gagal mengirim notifikasi');
+      alert(err.message || (lang === 'en' ? 'Failed to send test notification' : 'Gagal mengirim notifikasi'));
     }
   };
 
@@ -349,7 +349,7 @@ export default function PatientProfile() {
               {lang === 'id' ? 'Riwayat Alergi Obat' : 'Drug Allergies'}
             </span>
             <span className="font-semibold text-slate-800">
-              {profile?.allergies || 'Tidak ada'}
+              {profile?.allergies || (lang === 'en' ? 'None' : 'Tidak ada')}
             </span>
           </div>
 
@@ -466,7 +466,11 @@ export default function PatientProfile() {
                   : 'bg-teal-600 text-white hover:bg-teal-700'
               }`}
             >
-              {pushLoading ? t.common.loading : pushSubscribed ? 'Aktif ✓' : 'Aktifkan'}
+              {pushLoading
+                ? t.common.loading
+                : pushSubscribed
+                ? (lang === 'en' ? 'Enabled ✓' : 'Aktif ✓')
+                : (lang === 'en' ? 'Enable' : 'Aktifkan')}
             </button>
           )}
         </div>

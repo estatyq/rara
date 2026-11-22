@@ -110,7 +110,7 @@ export default function PatientMedications() {
       setShowModal(false);
       await loadData();
     } catch (err) {
-      alert(err.message || 'Gagal menyimpan jadwal obat');
+      alert(err.message || (lang === 'en' ? 'Failed to save medication schedule' : 'Gagal menyimpan jadwal obat'));
     } finally {
       setSaving(false);
     }
@@ -161,7 +161,7 @@ export default function PatientMedications() {
               triggerAlarm({
                 medication: activeMeds[0]?.name || 'Aspirin dosis rendah',
                 dosage: activeMeds[0]?.dosage || '80 mg',
-                instructions: activeMeds[0]?.instructions || 'Minum sesudah makan',
+                instructions: activeMeds[0]?.instructions || (lang === 'en' ? 'Take after meal' : 'Minum sesudah makan'),
                 title: lang === 'id' ? 'Uji Alarm Obat 💊' : 'Medication Alarm Test 💊',
                 message:
                   lang === 'id'
@@ -425,7 +425,7 @@ export default function PatientMedications() {
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">
                           {schedStr}
-                          {delayMin !== null && delayMin > 0 ? ` • +${delayMin} mnt` : ''}
+                          {delayMin !== null && delayMin > 0 ? ` • +${delayMin} ${lang === 'en' ? 'min' : 'mnt'}` : ''}
                         </p>
                         {d.note && <p className="text-xs italic text-slate-600 mt-1">"{d.note}"</p>}
                       </div>
@@ -534,7 +534,7 @@ export default function PatientMedications() {
                   required
                   value={medForm.name}
                   onChange={(e) => setMedForm({ ...medForm, name: e.target.value })}
-                  placeholder="Contoh: Aspirin dosis rendah / Kalsium"
+                  placeholder={lang === 'en' ? 'e.g., Low-dose Aspirin / Calcium' : 'Contoh: Aspirin dosis rendah / Kalsium'}
                   className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
                 />
               </div>
@@ -556,7 +556,7 @@ export default function PatientMedications() {
                     type="text"
                     value={medForm.form}
                     onChange={(e) => setMedForm({ ...medForm, form: e.target.value })}
-                    placeholder="Tablet / Kapsul"
+                    placeholder={lang === 'en' ? 'Tablet / Capsule' : 'Tablet / Kapsul'}
                     className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
                   />
                 </div>

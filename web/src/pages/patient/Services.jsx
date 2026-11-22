@@ -82,7 +82,7 @@ export default function PatientServices() {
       setSelectedService(null);
       await loadData();
     } catch (err) {
-      alert(err.message || 'Gagal mengajukan permintaan layanan');
+      alert(err.message || (lang === 'en' ? 'Failed to submit service request' : 'Gagal mengajukan permintaan layanan'));
     } finally {
       setSubmitting(false);
     }
@@ -300,7 +300,7 @@ export default function PatientServices() {
                       {lang === 'id' ? r.service?.nameId : r.service?.nameEn}
                     </span>
                     <span className="block text-[11px] text-slate-500">
-                      {r.pharmacist?.name ? `Apoteker: ${r.pharmacist.name} • ` : ''}
+                      {r.pharmacist?.name ? `${lang === 'en' ? 'Pharmacist' : 'Apoteker'}: ${r.pharmacist.name} • ` : ''}
                       {new Date(r.createdAt).toLocaleString(lang === 'id' ? 'id-ID' : 'en-US')}
                     </span>
                   </div>

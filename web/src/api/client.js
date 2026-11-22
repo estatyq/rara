@@ -177,6 +177,8 @@ export const api = {
   // Questionnaires
   getQuestionnaires: (all = false) => request(`/questionnaires${all ? '?all=1' : ''}`),
   getQuestionnaire: (id) => request(`/questionnaires/${id}`),
+  createQuestionnaire: (data) => request('/questionnaires', { method: 'POST', body: JSON.stringify(data) }),
+  updateQuestionnaire: (id, data) => request(`/questionnaires/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   submitQuestionnaire: (id, answers) =>
     request(`/questionnaires/${id}/responses`, { method: 'POST', body: JSON.stringify({ answers }) }),
   getPatientResponses: (patientId = 'me') =>

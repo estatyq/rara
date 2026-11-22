@@ -126,8 +126,8 @@ export const questionnaires = [
       },
       {
         id: 'bp3',
-        textId: 'Apakah Anda mengetahui tanda bahaya yang harus segera dilaporkan saat kehamilan?',
-        textEn: 'Do you know the warning signs that should be reported urgently during pregnancy?',
+        textId: 'Apakah Anda mengetahui tanda bahaya tekanan darah tinggi yang harus segera dilaporkan?',
+        textEn: 'Do you know the high blood pressure warning signs that should be reported urgently?',
         options: [
           { value: 'yes', textId: 'Ya, saya mengetahuinya', textEn: 'Yes, I know them', score: 2 },
           { value: 'some', textId: 'Sebagian saja', textEn: 'Only some of them', score: 1 },

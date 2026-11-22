@@ -24,6 +24,8 @@ export default function StaffPatientDetail() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const { t, lang } = useLanguage();
+  const isEn = lang === 'en';
+  const dateLocale = isEn ? 'en-US' : 'id-ID';
   const { user } = useAuth();
   const { socket } = useSocket();
 
@@ -150,9 +152,9 @@ export default function StaffPatientDetail() {
     setSavingNotes(true);
     try {
       await api.updatePatient(id, { notes });
-      alert(lang === 'id' ? 'Catatan klinis berhasil disimpan!' : 'Clinical notes saved!');
+      alert(isEn ? 'Clinical notes saved!' : 'Catatan klinis berhasil disimpan!');
     } catch (err) {
-      alert(err.message || 'Gagal menyimpan catatan');
+      alert(err.message || (isEn ? 'Failed to save notes' : 'Gagal menyimpan catatan'));
     } finally {
       setSavingNotes(false);
     }
@@ -175,17 +177,20 @@ export default function StaffPatientDetail() {
       setMedForm({ name: '', dosage: '', form: 'Tablet', instructions: '', times: '07:00', articleId: '' });
       await loadData();
     } catch (err) {
-      alert(err.message || 'Gagal menambahkan obat');
+      alert(err.message || (isEn ? 'Failed to add medication' : 'Gagal menambahkan obat'));
     }
   };
 
   const handleDeleteMedication = async (medId) => {
-    if (!window.confirm('Hentikan obat ini untuk pasien? Riwayat dosis tetap tersimpan untuk riset.')) return;
+    const confirmMsg = isEn
+      ? 'Stop this medication for the patient? Dose history will be preserved.'
+      : 'Hentikan obat ini untuk pasien? Riwayat dosis tetap tersimpan untuk riset.';
+    if (!window.confirm(confirmMsg)) return;
     try {
       await api.deleteMedication(medId);
       await loadData();
     } catch (err) {
-      alert(err.message || 'Gagal menonaktifkan obat');
+      alert(err.message || (isEn ? 'Failed to deactivate medication' : 'Gagal menonaktifkan obat'));
     }
   };
 
@@ -199,7 +204,7 @@ export default function StaffPatientDetail() {
       const res = await api.sendMessage(id, text);
       setMessages((prev) => [...prev, res.message]);
     } catch (err) {
-      alert(err.message || 'Gagal mengirim pesan');
+      alert(err.message || (isEn ? 'Failed to send message' : 'Gagal mengirim pesan'));
     } finally {
       setSendingMsg(false);
     }
@@ -217,7 +222,7 @@ export default function StaffPatientDetail() {
       setWaInput('');
       await loadData();
     } catch (err) {
-      alert(err.message || 'Gagal mengirim pesan WhatsApp');
+      alert(err.message || (isEn ? 'Failed to send WhatsApp message' : 'Gagal mengirim pesan WhatsApp'));
     } finally {
       setSendingWa(false);
     }
@@ -238,7 +243,7 @@ export default function StaffPatientDetail() {
       setClinicBp({ systolic: '', diastolic: '', pulse: '', note: '' });
       await loadData();
     } catch (err) {
-      alert(err.message || 'Gagal menyimpan tekanan darah');
+      alert(err.message || (isEn ? 'Failed to save blood pressure reading' : 'Gagal menyimpan tekanan darah'));
     } finally {
       setSavingBp(false);
     }
@@ -264,7 +269,7 @@ export default function StaffPatientDetail() {
       });
       await loadData();
     } catch (err) {
-      alert(err.message || 'Gagal menyimpan laporan tindak lanjut');
+      alert(err.message || (isEn ? 'Failed to save follow-up report' : 'Gagal menyimpan laporan tindak lanjut'));
     } finally {
       setSavingPto(false);
     }
@@ -316,10 +321,14 @@ export default function StaffPatientDetail() {
       {/* Printable Official Clinical Header (Visible when printing) */}
       <div className="hidden print:block border-b-2 border-teal-800 pb-4 mb-4">
         <h1 className="text-xl font-extrabold text-teal-950 uppercase">
-          Laporan Pemantauan Terapi Obat (PTO) & Farmasi Klinis
+          {isEn
+            ? 'Pharmacotherapy Monitoring (PTO) & Clinical Pharmacy Report'
+            : 'Laporan Pemantauan Terapi Obat (PTO) & Farmasi Klinis'}
         </h1>
         <p className="text-xs text-slate-600">
-          Platform Layanan Farmasi Digital DoseLynx • Apoteker Penanggung Jawab: {patient.pharmacist?.name || user.name}
+          {isEn
+            ? `DoseLynx Digital Pharmacy Platform • Responsible Pharmacist: ${patient.pharmacist?.name || user.name}`
+            : `Platform Layanan Farmasi Digital DoseLynx • Apoteker Penanggung Jawab: ${patient.pharmacist?.name || user.name}`}
         </p>
       </div>
 
@@ -345,27 +354,32 @@ export default function StaffPatientDetail() {
               {patient.allergies && (
                 <>
                   <span>•</span>
-                  <span className="text-rose-700 font-semibold">Alergi: {patient.allergies}</span>
+                  <span className="text-rose-700 font-semibold">
+                    {isEn ? 'Allergies:' : 'Alergi:'} {patient.allergies}
+                  </span>
                 </>
               )}
             </p>
             <div className="flex flex-wrap items-center gap-2 mt-2">
               <span className="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full">
-                {patient.studyGroup === 'CONTROL' ? 'Kelompok Kontrol' : 'Kelompok Intervensi'}
+                {patient.studyGroup === 'CONTROL'
+                  ? (isEn ? 'Control Group' : 'Kelompok Kontrol')
+                  : (isEn ? 'Intervention Group' : 'Kelompok Intervensi')}
               </span>
               {patient.estimatedDueDate && (
                 <span className="text-[10px] font-semibold text-slate-500">
-                  HPL {new Intl.DateTimeFormat('id-ID', { dateStyle: 'medium' }).format(new Date(patient.estimatedDueDate))}
+                  {isEn ? 'EDD' : 'HPL'}{' '}
+                  {new Intl.DateTimeFormat(dateLocale, { dateStyle: 'medium' }).format(new Date(patient.estimatedDueDate))}
                 </span>
               )}
               <div className="flex items-center gap-1 text-[11px] text-slate-600 print:hidden">
-                <span>• Apoteker PJ:</span>
+                <span>• {isEn ? 'Pharmacist:' : 'Apoteker PJ:'}</span>
                 <select
                   value={patient.pharmacistId || ''}
                   onChange={(e) => handleAssignPharmacist(e.target.value)}
                   className="bg-slate-100 border border-slate-200 rounded-lg px-2 py-0.5 text-xs font-bold text-teal-800"
                 >
-                  <option value="">-- Pilih Apoteker --</option>
+                  <option value="">{isEn ? '-- Select Pharmacist --' : '-- Pilih Apoteker --'}</option>
                   {staffList.map((st) => (
                     <option key={st.id} value={st.id}>{st.name}</option>
                   ))}
@@ -384,7 +398,7 @@ export default function StaffPatientDetail() {
                 : '—'}
             </span>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              TD Terakhir (mmHg)
+              {isEn ? 'Latest BP (mmHg)' : 'TD Terakhir (mmHg)'}
             </span>
           </div>
           <div className="text-right border-l border-slate-200 pl-6">
@@ -392,7 +406,7 @@ export default function StaffPatientDetail() {
               {adherence?.rate !== null && adherence?.rate !== undefined ? `${Math.round(adherence.rate)}%` : '—'}
             </span>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Kepatuhan 30 Hari
+              {isEn ? '30-Day Adherence' : 'Kepatuhan 30 Hari'}
             </span>
           </div>
         </div>
@@ -420,20 +434,22 @@ export default function StaffPatientDetail() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center">
             <h3 className="font-bold text-slate-800 text-sm mb-4">
-              Indikator Kepatuhan Obat (30 Hari)
+              {isEn ? 'Medication Adherence (30 Days)' : 'Indikator Kepatuhan Obat (30 Hari)'}
             </h3>
-            <AdherenceRing rate={adherence?.rate} size={150} strokeWidth={12} label="30 Hari" />
+            <AdherenceRing rate={adherence?.rate} size={150} strokeWidth={12} label={isEn ? '30 Days' : '30 Hari'} />
             {adherence?.avgDelayMinutes !== null && (
               <p className="text-xs text-slate-500 mt-4 pt-4 border-t border-slate-100">
-                Rata-rata deviasi jam minum obat:{' '}
-                <strong className="text-slate-800">{adherence.avgDelayMinutes} menit</strong>
+                {isEn ? 'Average intake timing delay:' : 'Rata-rata deviasi jam minum obat:'}{' '}
+                <strong className="text-slate-800">
+                  {adherence.avgDelayMinutes} {isEn ? 'min' : 'menit'}
+                </strong>
               </p>
             )}
           </div>
 
           <div className="md:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <h3 className="font-bold text-slate-800 text-sm">
-              Tingkat Kepatuhan per Obat
+              {isEn ? 'Adherence by Medication' : 'Tingkat Kepatuhan per Obat'}
             </h3>
             {adherence?.byMedication?.length ? (
               <div className="space-y-3">
@@ -442,7 +458,9 @@ export default function StaffPatientDetail() {
                     <div>
                       <span className="font-semibold text-slate-900 text-sm">{m.name}</span>
                       <span className="text-xs text-slate-500 block">
-                        Diminum: {m.TAKEN} | Dilewati: {m.SKIPPED} | Terlewat: {m.MISSED}
+                        {isEn
+                          ? `Taken: ${m.TAKEN} | Skipped: ${m.SKIPPED} | Missed: ${m.MISSED}`
+                          : `Diminum: ${m.TAKEN} | Dilewati: ${m.SKIPPED} | Terlewat: ${m.MISSED}`}
                       </span>
                     </div>
                     <span className="font-bold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200 text-xs">
@@ -452,12 +470,16 @@ export default function StaffPatientDetail() {
                 ))}
               </div>
             ) : (
-              <p className="text-xs text-slate-400">Belum ada riwayat konsumsi obat yang tercatat.</p>
+              <p className="text-xs text-slate-400">
+                {isEn ? 'No medication intake history recorded yet.' : 'Belum ada riwayat konsumsi obat yang tercatat.'}
+              </p>
             )}
 
             {patient.riskFactors && (
               <div className="mt-4 p-4 bg-amber-50/70 border border-amber-200 rounded-xl text-xs text-amber-950">
-                <strong className="block uppercase text-[10px] text-amber-700 mb-1">Faktor Risiko Klinis:</strong>
+                <strong className="block uppercase text-[10px] text-amber-700 mb-1">
+                  {isEn ? 'Clinical Risk Factors:' : 'Faktor Risiko Klinis:'}
+                </strong>
                 {patient.riskFactors}
               </div>
             )}
@@ -469,13 +491,15 @@ export default function StaffPatientDetail() {
       {activeTab === 'medications' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-slate-900 text-base">Regimen Resep & Jadwal Pengobatan</h3>
+            <h3 className="font-bold text-slate-900 text-base">
+              {isEn ? 'Prescriptions & Medication Schedule' : 'Regimen Resep & Jadwal Pengobatan'}
+            </h3>
             <button
               onClick={() => setShowAddMed(true)}
               className="flex items-center space-x-1.5 px-3 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-semibold shadow-sm transition"
             >
               <Plus className="w-4 h-4" />
-              <span>Tambah Obat</span>
+              <span>{isEn ? 'Add Medication' : 'Tambah Obat'}</span>
             </button>
           </div>
 
@@ -506,7 +530,7 @@ export default function StaffPatientDetail() {
                     <button
                       onClick={() => handleDeleteMedication(med.id)}
                       className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                      title="Hentikan obat"
+                      title={isEn ? 'Stop medication' : 'Hentikan obat'}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -518,7 +542,7 @@ export default function StaffPatientDetail() {
         </div>
       )}
 
-      {/* TAB 3: Medication Use History (Riwayat Pengobatan Pasien) */}
+      {/* TAB 3: Medication Use History */}
       {activeTab === 'history' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
@@ -545,18 +569,20 @@ export default function StaffPatientDetail() {
 
           {doses.length === 0 ? (
             <p className="p-12 text-center text-xs text-slate-400">
-              Belum ada riwayat penggunaan obat pada rentang tanggal ini.
+              {isEn
+                ? 'No medication consumption history in this date range.'
+                : 'Belum ada riwayat penggunaan obat pada rentang tanggal ini.'}
             </p>
           ) : (
             <div className="overflow-x-auto max-h-[540px] overflow-y-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-500 uppercase">
                   <tr>
-                    <th className="px-5 py-3">Waktu Jadwal</th>
-                    <th className="px-5 py-3">Obat & Dosis</th>
-                    <th className="px-5 py-3">Status</th>
-                    <th className="px-5 py-3">Waktu Diminum / Deviasi</th>
-                    <th className="px-5 py-3">Catatan Pasien</th>
+                    <th className="px-5 py-3">{isEn ? 'Scheduled Time' : 'Waktu Jadwal'}</th>
+                    <th className="px-5 py-3">{isEn ? 'Medication & Dosage' : 'Obat & Dosis'}</th>
+                    <th className="px-5 py-3">{isEn ? 'Status' : 'Status'}</th>
+                    <th className="px-5 py-3">{isEn ? 'Taken At / Delay' : 'Waktu Diminum / Deviasi'}</th>
+                    <th className="px-5 py-3">{isEn ? 'Patient Note' : 'Catatan Pasien'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -568,7 +594,7 @@ export default function StaffPatientDetail() {
                     return (
                       <tr key={d.id} className="hover:bg-slate-50">
                         <td className="px-5 py-3 font-mono text-slate-700">
-                          {new Intl.DateTimeFormat('id-ID', {
+                          {new Intl.DateTimeFormat(dateLocale, {
                             dateStyle: 'medium',
                             timeStyle: 'short',
                             timeZone: patient.user.timezone,
@@ -590,7 +616,7 @@ export default function StaffPatientDetail() {
                         </td>
                         <td className="px-5 py-3 text-slate-600">
                           {d.takenAt
-                            ? `${new Date(d.takenAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} (${delayMin >= 0 ? `+${delayMin}` : delayMin} mnt)`
+                            ? `${new Date(d.takenAt).toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })} (${delayMin >= 0 ? `+${delayMin}` : delayMin} ${isEn ? 'min' : 'mnt'})`
                             : '—'}
                         </td>
                         <td className="px-5 py-3 italic text-slate-500">{d.note || '—'}</td>
@@ -610,7 +636,9 @@ export default function StaffPatientDetail() {
           <div className="lg:col-span-2 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Terakhir</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {isEn ? 'Latest' : 'Terakhir'}
+                </span>
                 <div className="mt-2 text-2xl font-extrabold text-slate-900">
                   {bloodPressure?.summary?.latest
                     ? `${bloodPressure.summary.latest.systolic}/${bloodPressure.summary.latest.diastolic}`
@@ -619,7 +647,9 @@ export default function StaffPatientDetail() {
                 </div>
               </div>
               <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Rata-rata</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {isEn ? 'Average' : 'Rata-rata'}
+                </span>
                 <div className="mt-2 text-2xl font-extrabold text-slate-900">
                   {bloodPressure?.summary?.average
                     ? `${bloodPressure.summary.average.systolic}/${bloodPressure.summary.average.diastolic}`
@@ -627,7 +657,9 @@ export default function StaffPatientDetail() {
                 </div>
               </div>
               <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Terkontrol</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                  {isEn ? 'Controlled' : 'Terkontrol'}
+                </span>
                 <div className="mt-2 text-2xl font-extrabold text-teal-700">
                   {bloodPressure?.summary?.controlRate == null ? '—' : `${bloodPressure.summary.controlRate}%`}
                 </div>
@@ -637,7 +669,9 @@ export default function StaffPatientDetail() {
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
                 <HeartPulse className="w-4 h-4 text-rose-500" />
-                <h3 className="font-bold text-slate-900 text-sm">Riwayat tekanan darah</h3>
+                <h3 className="font-bold text-slate-900 text-sm">
+                  {isEn ? 'Blood Pressure History' : 'Riwayat tekanan darah'}
+                </h3>
               </div>
               {bloodPressure?.logs?.length ? (
                 <div className="divide-y divide-slate-100 max-h-[480px] overflow-y-auto">
@@ -649,12 +683,12 @@ export default function StaffPatientDetail() {
                           <span className="text-[10px] font-medium text-slate-400 ml-1.5">mmHg</span>
                         </p>
                         <p className="text-[11px] text-slate-500">
-                          {new Intl.DateTimeFormat('id-ID', {
+                          {new Intl.DateTimeFormat(dateLocale, {
                             timeZone: patient.user.timezone,
                             dateStyle: 'medium',
                             timeStyle: 'short',
                           }).format(new Date(log.measuredAt))}
-                          {' · '}{log.source === 'CLINIC' ? 'Klinik' : 'Mandiri'}
+                          {' · '}{log.source === 'CLINIC' ? (isEn ? 'Clinic' : 'Klinik') : (isEn ? 'Self' : 'Mandiri')}
                         </p>
                         {log.note && <p className="text-xs text-slate-500 mt-1">{log.note}</p>}
                       </div>
@@ -673,7 +707,9 @@ export default function StaffPatientDetail() {
                   ))}
                 </div>
               ) : (
-                <p className="px-5 py-12 text-center text-sm text-slate-400">Belum ada pengukuran tekanan darah.</p>
+                <p className="px-5 py-12 text-center text-sm text-slate-400">
+                  {isEn ? 'No blood pressure readings recorded yet.' : 'Belum ada pengukuran tekanan darah.'}
+                </p>
               )}
             </div>
           </div>
@@ -681,11 +717,13 @@ export default function StaffPatientDetail() {
           <form onSubmit={handleClinicBp} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3 h-fit">
             <div className="flex items-center gap-2">
               <Activity className="w-4 h-4 text-teal-600" />
-              <h3 className="font-bold text-slate-900 text-sm">Catat hasil klinik</h3>
+              <h3 className="font-bold text-slate-900 text-sm">
+                {isEn ? 'Record Clinic Reading' : 'Catat hasil klinik'}
+              </h3>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <label className="text-[10px] font-bold uppercase text-slate-500">
-                Sistolik
+                {isEn ? 'Systolic' : 'Sistolik'}
                 <input
                   type="number"
                   min="60"
@@ -697,7 +735,7 @@ export default function StaffPatientDetail() {
                 />
               </label>
               <label className="text-[10px] font-bold uppercase text-slate-500">
-                Diastolik
+                {isEn ? 'Diastolic' : 'Diastolik'}
                 <input
                   type="number"
                   min="30"
@@ -710,7 +748,7 @@ export default function StaffPatientDetail() {
               </label>
             </div>
             <label className="block text-[10px] font-bold uppercase text-slate-500">
-              Nadi
+              {isEn ? 'Pulse' : 'Nadi'}
               <input
                 type="number"
                 min="30"
@@ -721,7 +759,7 @@ export default function StaffPatientDetail() {
               />
             </label>
             <label className="block text-[10px] font-bold uppercase text-slate-500">
-              Catatan
+              {isEn ? 'Note' : 'Catatan'}
               <textarea
                 rows="2"
                 value={clinicBp.note}
@@ -734,7 +772,9 @@ export default function StaffPatientDetail() {
               disabled={savingBp}
               className="w-full rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-700 disabled:opacity-50"
             >
-              {savingBp ? 'Menyimpan...' : 'Simpan pengukuran'}
+              {savingBp
+                ? (isEn ? 'Saving...' : 'Menyimpan...')
+                : (isEn ? 'Save Reading' : 'Simpan pengukuran')}
             </button>
           </form>
         </div>
@@ -751,26 +791,30 @@ export default function StaffPatientDetail() {
             <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
               <FileText className="w-4 h-4 text-teal-600" />
               <h3 className="font-bold text-slate-900 text-sm">
-                {lang === 'id' ? 'Buat Tindak Lanjut & Laporan PTO Baru' : 'New Follow-Up & PTO Report'}
+                {isEn ? 'New Follow-Up & PTO Report' : 'Buat Tindak Lanjut & Laporan PTO Baru'}
               </h3>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] font-bold uppercase text-slate-500">Jenis Evaluasi</label>
+                <label className="text-[10px] font-bold uppercase text-slate-500">
+                  {isEn ? 'Evaluation Type' : 'Jenis Evaluasi'}
+                </label>
                 <select
                   value={ptoForm.type}
                   onChange={(e) => setPtoForm({ ...ptoForm, type: e.target.value })}
                   className="mt-1 w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
                 >
-                  <option value="PTO_REPORT">Laporan PTO (SOAP)</option>
-                  <option value="FOLLOW_UP">Tindak Lanjut Berkala</option>
-                  <option value="COUNSELING">Konseling Kepatuhan</option>
-                  <option value="DRP_INTERVENTION">Intervensi DRP / Efek Samping</option>
+                  <option value="PTO_REPORT">{isEn ? 'PTO Report (SOAP)' : 'Laporan PTO (SOAP)'}</option>
+                  <option value="FOLLOW_UP">{isEn ? 'Periodic Follow-Up' : 'Tindak Lanjut Berkala'}</option>
+                  <option value="COUNSELING">{isEn ? 'Adherence Counseling' : 'Konseling Kepatuhan'}</option>
+                  <option value="DRP_INTERVENTION">{isEn ? 'DRP / Side Effect Intervention' : 'Intervensi DRP / Efek Samping'}</option>
                 </select>
               </div>
               <div>
-                <label className="text-[10px] font-bold uppercase text-slate-500">Jadwal Evaluasi Berikutnya</label>
+                <label className="text-[10px] font-bold uppercase text-slate-500">
+                  {isEn ? 'Next Follow-Up Date' : 'Jadwal Evaluasi Berikutnya'}
+                </label>
                 <input
                   type="date"
                   value={ptoForm.nextFollowUpDate}
@@ -781,70 +825,82 @@ export default function StaffPatientDetail() {
             </div>
 
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-500">Kategori Masalah Terapi Obat (DRP)</label>
+              <label className="text-[10px] font-bold uppercase text-slate-500">
+                {isEn ? 'Drug-Related Problem (DRP) Category' : 'Kategori Masalah Terapi Obat (DRP)'}
+              </label>
               <select
                 value={ptoForm.drpCategory}
                 onChange={(e) => setPtoForm({ ...ptoForm, drpCategory: e.target.value })}
                 className="mt-1 w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold"
               >
                 {Object.entries(DRP_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>{lang === 'id' ? v.id : v.en}</option>
+                  <option key={k} value={k}>{isEn ? v.en : v.id}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-500">Subjective (Keluhan Pasien)</label>
+              <label className="text-[10px] font-bold uppercase text-slate-500">
+                {isEn ? 'Subjective (Patient Symptoms)' : 'Subjective (Keluhan Pasien)'}
+              </label>
               <textarea
                 rows={2}
                 value={ptoForm.subjective}
                 onChange={(e) => setPtoForm({ ...ptoForm, subjective: e.target.value })}
-                placeholder="Keluhan pasien, gejala, kendala waktu minum obat..."
+                placeholder={isEn ? 'Patient symptoms, timing challenges...' : 'Keluhan pasien, gejala, kendala waktu minum obat...'}
                 className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
               />
             </div>
 
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-500">Objective (Data Kepatuhan & Tekanan Darah)</label>
+              <label className="text-[10px] font-bold uppercase text-slate-500">
+                {isEn ? 'Objective (Adherence & Blood Pressure)' : 'Objective (Data Kepatuhan & Tekanan Darah)'}
+              </label>
               <textarea
                 rows={2}
                 value={ptoForm.objective}
                 onChange={(e) => setPtoForm({ ...ptoForm, objective: e.target.value })}
-                placeholder="Hasil TD terbaru, skor kepatuhan 30 hari, hasil lab..."
+                placeholder={isEn ? 'Latest BP reading, 30-day adherence rate, labs...' : 'Hasil TD terbaru, skor kepatuhan 30 hari, hasil lab...'}
                 className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
               />
             </div>
 
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-500">Assessment (Analisis Farmakoterapi)</label>
+              <label className="text-[10px] font-bold uppercase text-slate-500">
+                {isEn ? 'Assessment (Pharmacotherapy Analysis)' : 'Assessment (Analisis Farmakoterapi)'}
+              </label>
               <textarea
                 rows={2}
                 value={ptoForm.assessment}
                 onChange={(e) => setPtoForm({ ...ptoForm, assessment: e.target.value })}
-                placeholder="Evaluasi efektivitas terapi, keamanan, dan kepatuhan..."
+                placeholder={isEn ? 'Therapy effectiveness, safety, and adherence evaluation...' : 'Evaluasi efektivitas terapi, keamanan, dan kepatuhan...'}
                 className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
               />
             </div>
 
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-500">Plan (Rencana Tindak Lanjut Farmakoterapi) *</label>
+              <label className="text-[10px] font-bold uppercase text-slate-500">
+                {isEn ? 'Plan (Pharmacotherapy Care Plan) *' : 'Plan (Rencana Tindak Lanjut Farmakoterapi) *'}
+              </label>
               <textarea
                 rows={3}
                 required
                 value={ptoForm.plan}
                 onChange={(e) => setPtoForm({ ...ptoForm, plan: e.target.value })}
-                placeholder="Rencana intervensi apoteker, penyesuaian jadwal alarm, edukasi..."
+                placeholder={isEn ? 'Pharmacist intervention plan, alarm adjustments, counseling...' : 'Rencana intervensi apoteker, penyesuaian jadwal alarm, edukasi...'}
                 className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
               />
             </div>
 
             <div>
-              <label className="text-[10px] font-bold uppercase text-slate-500">Rekomendasi Spesifik untuk Pasien / Dokter</label>
+              <label className="text-[10px] font-bold uppercase text-slate-500">
+                {isEn ? 'Specific Recommendation for Patient / Clinician' : 'Rekomendasi Spesifik untuk Pasien / Dokter'}
+              </label>
               <input
                 type="text"
                 value={ptoForm.recommendation}
                 onChange={(e) => setPtoForm({ ...ptoForm, recommendation: e.target.value })}
-                placeholder="Saran praktis yang dikirim ke pasien..."
+                placeholder={isEn ? 'Practical guidance sent to patient...' : 'Saran praktis yang dikirim ke pasien...'}
                 className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
               />
             </div>
@@ -857,7 +913,9 @@ export default function StaffPatientDetail() {
                   onChange={(e) => setPtoForm({ ...ptoForm, sendToChat: e.target.checked })}
                   className="rounded border-slate-300 text-teal-600"
                 />
-                <span>Kirim ringkasan ke ruang Konsultasi Chat pasien</span>
+                <span>
+                  {isEn ? 'Send summary to patient Consultation Chat' : 'Kirim ringkasan ke ruang Konsultasi Chat pasien'}
+                </span>
               </label>
               <label className="flex items-center gap-2 text-xs text-slate-700">
                 <input
@@ -866,7 +924,9 @@ export default function StaffPatientDetail() {
                   onChange={(e) => setPtoForm({ ...ptoForm, sendViaWhatsApp: e.target.checked })}
                   className="rounded border-slate-300 text-teal-600"
                 />
-                <span>Kirim tindak lanjut otomatis ke WhatsApp pasien</span>
+                <span>
+                  {isEn ? 'Send automatic follow-up via WhatsApp' : 'Kirim tindak lanjut otomatis ke WhatsApp pasien'}
+                </span>
               </label>
             </div>
 
@@ -875,7 +935,9 @@ export default function StaffPatientDetail() {
               disabled={savingPto}
               className="w-full py-2.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition disabled:opacity-50"
             >
-              {savingPto ? 'Menyimpan Laporan PTO...' : 'Simpan & Kirim Tindak Lanjut PTO'}
+              {savingPto
+                ? (isEn ? 'Saving PTO Report...' : 'Menyimpan Laporan PTO...')
+                : (isEn ? 'Save & Send PTO Follow-Up' : 'Simpan & Kirim Tindak Lanjut PTO')}
             </button>
           </form>
 
@@ -883,20 +945,24 @@ export default function StaffPatientDetail() {
           <div className="lg:col-span-7 print:col-span-12 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-900 text-base">
-                Rekam Laporan Pemantauan Farmakoterapi (PTO) & Tindak Lanjut
+                {isEn
+                  ? 'Pharmacotherapy Monitoring (PTO) & Follow-Up Records'
+                  : 'Rekam Laporan Pemantauan Farmakoterapi (PTO) & Tindak Lanjut'}
               </h3>
               <button
                 onClick={() => window.print()}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-teal-50 text-teal-800 rounded-lg text-xs font-bold hover:bg-teal-100 print:hidden"
               >
                 <Printer className="w-3.5 h-3.5" />
-                <span>Cetak / PDF</span>
+                <span>{isEn ? 'Print / PDF' : 'Cetak / PDF'}</span>
               </button>
             </div>
 
             {followUps.length === 0 ? (
               <div className="bg-white rounded-2xl p-10 border border-slate-200 text-center text-slate-400 text-xs">
-                Belum ada rekam laporan pemantauan farmakoterapi untuk pasien ini.
+                {isEn
+                  ? 'No pharmacotherapy monitoring records for this patient yet.'
+                  : 'Belum ada rekam laporan pemantauan farmakoterapi untuk pasien ini.'}
               </div>
             ) : (
               followUps.map((f) => (
@@ -908,17 +974,25 @@ export default function StaffPatientDetail() {
                           {f.type}
                         </span>
                         <span className="text-[10px] font-bold uppercase bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">
-                          DRP: {DRP_LABELS[f.drpCategory]?.id || f.drpCategory}
+                          DRP: {DRP_LABELS[f.drpCategory]?.[isEn ? 'en' : 'id'] || f.drpCategory}
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 mt-1">
-                        Oleh: <strong>{f.pharmacist?.name}</strong> •{' '}
-                        {new Date(f.createdAt).toLocaleString('id-ID')}
+                        {isEn ? 'By:' : 'Oleh:'} <strong>{f.pharmacist?.name}</strong> •{' '}
+                        {new Date(f.createdAt).toLocaleString(dateLocale)}
                       </p>
                     </div>
                     <div className="text-right text-xs text-slate-600">
-                      {f.adherenceRate !== null && <div>Kepatuhan: <strong>{Math.round(f.adherenceRate)}%</strong></div>}
-                      {f.latestBp && <div>TD: <strong>{f.latestBp}</strong></div>}
+                      {f.adherenceRate !== null && (
+                        <div>
+                          {isEn ? 'Adherence:' : 'Kepatuhan:'} <strong>{Math.round(f.adherenceRate)}%</strong>
+                        </div>
+                      )}
+                      {f.latestBp && (
+                        <div>
+                          {isEn ? 'BP:' : 'TD:'} <strong>{f.latestBp}</strong>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -939,25 +1013,30 @@ export default function StaffPatientDetail() {
 
                   {f.assessment && (
                     <div className="p-3 bg-slate-50 rounded-xl text-xs">
-                      <strong className="text-slate-800 block mb-0.5">A — Assessment (Analisis Farmakoterapi):</strong>
+                      <strong className="text-slate-800 block mb-0.5">
+                        {isEn ? 'A — Assessment (Pharmacotherapy Analysis):' : 'A — Assessment (Analisis Farmakoterapi):'}
+                      </strong>
                       <p className="text-slate-700">{f.assessment}</p>
                     </div>
                   )}
 
                   <div className="p-3.5 bg-teal-50/60 border border-teal-200 rounded-xl text-xs">
-                    <strong className="text-teal-950 block mb-0.5">P — Plan (Rencana Tindak Lanjut):</strong>
+                    <strong className="text-teal-950 block mb-0.5">
+                      {isEn ? 'P — Plan (Care Plan):' : 'P — Plan (Rencana Tindak Lanjut):'}
+                    </strong>
                     <p className="text-teal-900 whitespace-pre-line">{f.plan}</p>
                   </div>
 
                   {f.recommendation && (
                     <p className="text-xs text-slate-700">
-                      <strong>Rekomendasi:</strong> {f.recommendation}
+                      <strong>{isEn ? 'Recommendation:' : 'Rekomendasi:'}</strong> {f.recommendation}
                     </p>
                   )}
 
                   {f.nextFollowUpDate && (
                     <p className="text-[11px] font-semibold text-indigo-700">
-                      Jadwal Tindak Lanjut Berikutnya: {new Date(f.nextFollowUpDate).toLocaleDateString('id-ID', { dateStyle: 'long' })}
+                      {isEn ? 'Next Follow-Up Date:' : 'Jadwal Tindak Lanjut Berikutnya:'}{' '}
+                      {new Date(f.nextFollowUpDate).toLocaleDateString(dateLocale, { dateStyle: 'long' })}
                     </p>
                   )}
                 </div>
@@ -973,11 +1052,13 @@ export default function StaffPatientDetail() {
           {/* Left 7 cols: In-App Live Chat */}
           <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 h-[550px] flex flex-col">
             <h3 className="font-bold text-slate-900 text-sm mb-2 px-1">
-              Ruang Konsultasi Live Chat Aplikasi
+              {isEn ? 'In-App Live Consultation Chat' : 'Ruang Konsultasi Live Chat Aplikasi'}
             </h3>
             <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3 bg-slate-50 rounded-xl">
               {messages.length === 0 ? (
-                <p className="text-center py-12 text-slate-400 text-xs">Belum ada riwayat pesan.</p>
+                <p className="text-center py-12 text-slate-400 text-xs">
+                  {isEn ? 'No message history yet.' : 'Belum ada riwayat pesan.'}
+                </p>
               ) : (
                 messages.map((m) => {
                   const isMe = m.senderId === user.id;
@@ -991,7 +1072,7 @@ export default function StaffPatientDetail() {
                       >
                         <p>{m.body}</p>
                         <span className={`block text-[9px] mt-1 text-right ${isMe ? 'text-teal-200' : 'text-slate-400'}`}>
-                          {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(m.createdAt).toLocaleTimeString(dateLocale, { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
                     </div>
@@ -1005,7 +1086,7 @@ export default function StaffPatientDetail() {
                 type="text"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Ketik balasan atau instruksi apoteker..."
+                placeholder={isEn ? 'Type a pharmacist reply or instruction...' : 'Ketik balasan atau instruksi apoteker...'}
                 className="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
               <button
@@ -1024,7 +1105,9 @@ export default function StaffPatientDetail() {
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
                   <Phone className="w-4 h-4 text-emerald-600" />
-                  <h3 className="font-bold text-slate-900 text-sm">Integrasi WhatsApp Pasien</h3>
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    {isEn ? 'Patient WhatsApp Integration' : 'Integrasi WhatsApp Pasien'}
+                  </h3>
                 </div>
                 {waMeUrl && (
                   <a
@@ -1033,20 +1116,26 @@ export default function StaffPatientDetail() {
                     rel="noreferrer"
                     className="text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-lg hover:bg-emerald-100"
                   >
-                    Buka wa.me ↗
+                    {isEn ? 'Open wa.me ↗' : 'Buka wa.me ↗'}
                   </a>
                 )}
               </div>
 
               <form onSubmit={handleSendWhatsApp} className="space-y-2">
                 <label className="text-[10px] font-bold uppercase text-slate-500 block">
-                  Kirim Pesan / Pengingat WhatsApp ke {patient.user.phone || 'Pasien'}
+                  {isEn
+                    ? `Send WhatsApp Message / Reminder to ${patient.user.phone || 'Patient'}`
+                    : `Kirim Pesan / Pengingat WhatsApp ke ${patient.user.phone || 'Pasien'}`}
                 </label>
                 <textarea
                   rows={3}
                   value={waInput}
                   onChange={(e) => setWaInput(e.target.value)}
-                  placeholder={`Halo ${patient.user.name}, ini pengingat dari Apoteker ${user.name} untuk jadwal obat dan evaluasi tekanan darah Anda...`}
+                  placeholder={
+                    isEn
+                      ? `Hello ${patient.user.name}, this is a reminder from Pharmacist ${user.name} regarding your medication schedule and blood pressure check...`
+                      : `Halo ${patient.user.name}, ini pengingat dari Apoteker ${user.name} untuk jadwal obat dan evaluasi tekanan darah Anda...`
+                  }
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs resize-none"
                 />
                 <button
@@ -1054,20 +1143,22 @@ export default function StaffPatientDetail() {
                   disabled={!waInput.trim() || sendingWa}
                   className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition disabled:opacity-50"
                 >
-                  {sendingWa ? 'Mengirim ke WhatsApp...' : 'Kirim Pesan WhatsApp Sekarang'}
+                  {sendingWa
+                    ? (isEn ? 'Sending via WhatsApp...' : 'Mengirim ke WhatsApp...')
+                    : (isEn ? 'Send WhatsApp Message Now' : 'Kirim Pesan WhatsApp Sekarang')}
                 </button>
               </form>
 
               <div className="pt-2">
                 <span className="text-[10px] font-bold uppercase text-slate-400 block mb-2">
-                  Log Pengiriman WhatsApp ({waLogs.length})
+                  {isEn ? `WhatsApp Delivery Logs (${waLogs.length})` : `Log Pengiriman WhatsApp (${waLogs.length})`}
                 </span>
                 <div className="space-y-2 max-h-[260px] overflow-y-auto">
                   {waLogs.map((w) => (
                     <div key={w.id} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-[11px]">
                       <div className="flex justify-between text-[10px] text-slate-400 mb-1">
                         <span className="font-bold text-emerald-700">{w.category}</span>
-                        <span>{new Date(w.createdAt).toLocaleString('id-ID')} • {w.status}</span>
+                        <span>{new Date(w.createdAt).toLocaleString(dateLocale)} • {w.status}</span>
                       </div>
                       <p className="text-slate-700">{w.message}</p>
                     </div>
@@ -1085,10 +1176,14 @@ export default function StaffPatientDetail() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
             <div>
               <h3 className="font-bold text-slate-900 text-sm">
-                Catatan Intervensi & Konseling Farmasi (Privat Tim Peneliti)
+                {isEn
+                  ? 'Pharmacist Intervention & Counseling Notes (Private Team)'
+                  : 'Catatan Intervensi & Konseling Farmasi (Privat Tim Peneliti)'}
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Catatan ini hanya dapat dilihat oleh apoteker dan administrator, tidak ditampilkan kepada pasien.
+                {isEn
+                  ? 'Visible only to pharmacists and administrators; not shown to patients.'
+                  : 'Catatan ini hanya dapat dilihat oleh apoteker dan administrator, tidak ditampilkan kepada pasien.'}
               </p>
             </div>
 
@@ -1096,7 +1191,11 @@ export default function StaffPatientDetail() {
               rows={8}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Tulis riwayat konseling, penyesuaian jadwal obat, keluhan efek samping, atau catatan penting riset..."
+              placeholder={
+                isEn
+                  ? 'Record counseling history, schedule adjustments, side effect notes, or clinical observations...'
+                  : 'Tulis riwayat konseling, penyesuaian jadwal obat, keluhan efek samping, atau catatan penting riset...'
+              }
               className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 font-sans"
             />
 
@@ -1112,22 +1211,32 @@ export default function StaffPatientDetail() {
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
             <h3 className="font-bold text-slate-900 text-sm">
-              Riwayat Jawaban Kuesioner Pasien ({responses.length})
+              {isEn
+                ? `Patient Questionnaire History (${responses.length})`
+                : `Riwayat Jawaban Kuesioner Pasien (${responses.length})`}
             </h3>
             {responses.length === 0 ? (
-              <p className="text-xs text-slate-400">Pasien belum mengisi kuesioner apa pun.</p>
+              <p className="text-xs text-slate-400">
+                {isEn ? 'Patient has not completed any questionnaires yet.' : 'Pasien belum mengisi kuesioner apa pun.'}
+              </p>
             ) : (
               <div className="space-y-3 max-h-[360px] overflow-y-auto">
                 {responses.map((resp) => (
                   <div key={resp.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="font-bold text-slate-800 text-sm">{resp.questionnaire?.titleId}</span>
-                        <span className="text-xs text-slate-400 block">{new Date(resp.createdAt).toLocaleString()}</span>
+                        <span className="font-bold text-slate-800 text-sm">
+                          {isEn
+                            ? (resp.questionnaire?.titleEn || resp.questionnaire?.titleId)
+                            : (resp.questionnaire?.titleId || resp.questionnaire?.titleEn)}
+                        </span>
+                        <span className="text-xs text-slate-400 block">
+                          {new Date(resp.createdAt).toLocaleString(dateLocale)}
+                        </span>
                       </div>
                       {resp.score !== null && (
                         <span className="font-bold text-teal-800 bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200 text-xs">
-                          Skor: {resp.score}
+                          {isEn ? 'Score:' : 'Skor:'} {resp.score}
                         </span>
                       )}
                     </div>
@@ -1143,23 +1252,29 @@ export default function StaffPatientDetail() {
       {showAddMed && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-4">
-            <h3 className="font-bold text-slate-900 text-lg">Tambah Obat untuk Pasien</h3>
+            <h3 className="font-bold text-slate-900 text-lg">
+              {isEn ? 'Add Medication for Patient' : 'Tambah Obat untuk Pasien'}
+            </h3>
             <form onSubmit={handleAddMedication} className="space-y-3">
               <div>
-                <label className="text-xs font-semibold text-slate-700 uppercase">Nama Obat *</label>
+                <label className="text-xs font-semibold text-slate-700 uppercase">
+                  {isEn ? 'Medication Name *' : 'Nama Obat *'}
+                </label>
                 <input
                   type="text"
                   required
                   value={medForm.name}
                   onChange={(e) => setMedForm({ ...medForm, name: e.target.value })}
-                  placeholder="Aspirin dosis rendah"
+                  placeholder={isEn ? 'Low-dose Aspirin' : 'Aspirin dosis rendah'}
                   className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 uppercase">Dosis</label>
+                  <label className="text-xs font-semibold text-slate-700 uppercase">
+                    {isEn ? 'Dosage' : 'Dosis'}
+                  </label>
                   <input
                     type="text"
                     value={medForm.dosage}
@@ -1169,7 +1284,9 @@ export default function StaffPatientDetail() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 uppercase">Bentuk</label>
+                  <label className="text-xs font-semibold text-slate-700 uppercase">
+                    {isEn ? 'Form' : 'Bentuk'}
+                  </label>
                   <input
                     type="text"
                     value={medForm.form}
@@ -1181,7 +1298,9 @@ export default function StaffPatientDetail() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 uppercase">Jadwal Jam Minum (Pisahkan koma) *</label>
+                <label className="text-xs font-semibold text-slate-700 uppercase">
+                  {isEn ? 'Alarm Times (comma-separated) *' : 'Jadwal Jam Minum (Pisahkan koma) *'}
+                </label>
                 <input
                   type="text"
                   required
@@ -1193,26 +1312,30 @@ export default function StaffPatientDetail() {
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 uppercase">Instruksi Pasien</label>
+                <label className="text-xs font-semibold text-slate-700 uppercase">
+                  {isEn ? 'Patient Instructions' : 'Instruksi Pasien'}
+                </label>
                 <input
                   type="text"
                   value={medForm.instructions}
                   onChange={(e) => setMedForm({ ...medForm, instructions: e.target.value })}
-                  placeholder="Diminum bersama makan pagi"
+                  placeholder={isEn ? 'Take with breakfast' : 'Diminum bersama makan pagi'}
                   className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 uppercase">Tautkan Panduan Edukasi</label>
+                <label className="text-xs font-semibold text-slate-700 uppercase">
+                  {isEn ? 'Link Educational Guide' : 'Tautkan Panduan Edukasi'}
+                </label>
                 <select
                   value={medForm.articleId}
                   onChange={(e) => setMedForm({ ...medForm, articleId: e.target.value })}
                   className="mt-1 w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
                 >
-                  <option value="">-- Tanpa Panduan Terkait --</option>
+                  <option value="">{isEn ? '-- No Linked Guide --' : '-- Tanpa Panduan Terkait --'}</option>
                   {articles.map((a) => (
-                    <option key={a.id} value={a.id}>{a.titleId}</option>
+                    <option key={a.id} value={a.id}>{isEn ? (a.titleEn || a.titleId) : a.titleId}</option>
                   ))}
                 </select>
               </div>
@@ -1223,13 +1346,13 @@ export default function StaffPatientDetail() {
                   onClick={() => setShowAddMed(false)}
                   className="px-4 py-2 text-xs font-semibold text-slate-600"
                 >
-                  Batal
+                  {t.common.cancel}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2.5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-xl shadow-sm transition"
                 >
-                  Simpan Obat
+                  {isEn ? 'Save Medication' : 'Simpan Obat'}
                 </button>
               </div>
             </form>
