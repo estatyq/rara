@@ -174,11 +174,11 @@ export default function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <header className="bg-white/95 backdrop-blur-md border-b border-teal-100 sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
-          <Link to="/">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+          <Link to="/" className="shrink-0">
             <DoseMateLogo size="sm" showSubtitle />
           </Link>
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav className="hidden lg:flex flex-1 items-center justify-center gap-1 min-w-0 overflow-x-auto">
             {patientLinks.map((link) => {
               const Icon = link.icon;
               const active = isActive(link.to);
@@ -186,17 +186,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shrink-0 whitespace-nowrap transition ${
                     active ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-4 h-4 shrink-0" />
                   <span>{link.label}</span>
                 </Link>
               );
             })}
           </nav>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <LangToggle />
             <button
               type="button"

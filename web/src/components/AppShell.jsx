@@ -224,12 +224,12 @@ export default function AppShell({ children }) {
       <MedicationAlarmModal />
 
       <header className="bg-white/95 backdrop-blur-md border-b border-teal-100/80 sticky top-0 z-30 print:hidden">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3">
           <Link to="/" className="shrink-0">
-            <DoseMateLogo size="sm" showSubtitle subtitle={t.brandSubtitle} />
+            <DoseMateLogo size="sm" />
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-1 min-w-0">
+          <nav className="hidden lg:flex flex-1 items-center justify-center gap-0.5 xl:gap-1 min-w-0 overflow-x-auto no-scrollbar">
             {patientLinks.map((link) => {
               const Icon = link.icon;
               const active = isActive(link.to);
@@ -237,7 +237,7 @@ export default function AppShell({ children }) {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+                  className={`flex items-center gap-1.5 px-2 xl:px-2.5 py-2 rounded-xl text-xs font-semibold shrink-0 whitespace-nowrap transition ${
                     active
                       ? 'bg-teal-50 text-teal-700'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
@@ -252,7 +252,7 @@ export default function AppShell({ children }) {
 
           <div className="flex items-center gap-2 shrink-0">
             <LanguageSwitch compact />
-            <div className="hidden sm:flex flex-col text-right leading-tight pl-1">
+            <div className="hidden sm:flex lg:hidden xl:flex flex-col text-right leading-tight pl-1">
               <span className="text-xs font-bold text-slate-900 max-w-[140px] truncate">{user.name}</span>
               <span className="text-[10px] text-slate-500">{user.phone || user.email}</span>
             </div>
